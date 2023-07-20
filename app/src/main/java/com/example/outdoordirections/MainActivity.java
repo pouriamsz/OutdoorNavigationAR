@@ -83,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
     // UI variables
     ImageButton getLocation;
     Button directionBtn, openCamera;
-    TextView testText;
 
     // Location
     public LocationManager locationManager;
@@ -132,10 +131,10 @@ public class MainActivity extends AppCompatActivity {
     double ttff = 5.0;
 
     private ArFragment arCam;
-    private AnchorNode oldWaterMark = null;
     private Node oldNode = null;
-    ModelRenderable model;
+    TransformableNode model;
     private int deviceHeight, deviceWidth;
+    private Node node = new Node();
 
     private int count =0;
 
@@ -187,7 +186,6 @@ public class MainActivity extends AppCompatActivity {
 //        RelativeLayout.LayoutParams mapViewParams = new RelativeLayout.LayoutParams(deviceWidth, deviceHeight/2);
 //        osm.setLayoutParams(mapViewParams);
 
-        testText = findViewById(R.id.testTextView);
 
         // AR Camera Button
         openCamera.setOnClickListener(new View.OnClickListener() {
@@ -196,39 +194,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (checkSystemSupport(MainActivity.this)) {
 
-                    ModelRenderable.builder()
-                            .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
-                            .setIsFilamentGltf(true)
-                            .build()
-                            .thenAccept(modelRenderable -> setModel(modelRenderable))
-                            .exceptionally(throwable -> {
-                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                                builder.setMessage("Something is not right" + throwable.getMessage()).show();
-                                return null;
-                            });
-
-                    // ArFragment is linked up with its respective id used in the activity_main.xml
-                    arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
-                    arCam.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
-                        @Override
-                        public void onUpdate(FrameTime frameTime) {
-                            arCam.onUpdate(frameTime);
-                            if(oldNode!=null){
-                                //Vector3 pos = new Vector3(10,10,10);
-                                //oldNode.setLocalPosition(pos);
-                                //oldNode.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getWorldRotation());
-                                if (count%10==0){
-                                    addNode(model);
-                                    testText.setText(count+"");
-                                }
-                                count++;
-                            }
-                        }
-                    });
-                    arCam.setOnTapArPlaneListener((hitResult, plane, motionEvent) -> {
-                        // the 3d model comes to the scene only
-                        // when clickNo is one that means once
-                        Anchor anchor = hitResult.createAnchor();
+                    if (oldNode==null){
                         ModelRenderable.builder()
                                 .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
                                 .setIsFilamentGltf(true)
@@ -239,6 +205,23 @@ public class MainActivity extends AppCompatActivity {
                                     builder.setMessage("Something is not right" + throwable.getMessage()).show();
                                     return null;
                                 });
+                    }
+
+
+                    // ArFragment is linked up with its respective id used in the activity_main.xml
+                    arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+                    arCam.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
+                        @Override
+                        public void onUpdate(FrameTime frameTime) {
+                            // TODO: ?
+//                            arCam.onUpdate(frameTime);
+                            if(oldNode!=null){
+                                if (count%10==0){
+                                    updateNode();
+                                }
+                                count++;
+                            }
+                        }
                     });
                 } else {
                     return;
@@ -352,8 +335,15 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void setModel(ModelRenderable modelRenderable){
-        model = modelRenderable;
+    private void updateNode() {
+
+        Camera camera = arCam.getArSceneView().getScene().getCamera();
+        // TODO: Cast ray to center of screen
+        Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
+
+        model.setLocalPosition(ray.getPoint(1f));
+        model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
+
     }
 
     private void addNode(ModelRenderable modelRenderable) {
@@ -362,13 +352,12 @@ public class MainActivity extends AppCompatActivity {
         if(oldNode!=null){
             arCam.getArSceneView().getScene().removeChild(oldNode);
         }
-        Node node = new Node();
         node.setParent(arCam.getArSceneView().getScene());
         Camera camera = arCam.getArSceneView().getScene().getCamera();
         // TODO: Cast ray to center of screen
-        Ray ray = camera.screenPointToRay(200, 500);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
 
-        TransformableNode model = new TransformableNode(arCam.getTransformationSystem());
+        model = new TransformableNode(arCam.getTransformationSystem());
         model.setParent(node);
         model.setRenderable(modelRenderable);
         model.setLocalPosition(ray.getPoint(1f));
