@@ -91,18 +91,6 @@ public class MainActivity extends AppCompatActivity {
     public LocationManager locationManager;
     public LocationListener locationListener = new MyLocationListener();
 
-    // Lat, Lon, distance, Speed, time
-    double dLat1 = 0.0, dLon1 = 0.0;
-    double dLat2 = 0.0, dLon2 = 0.0;
-    double deltaLat = 0.0, deltaLon = 0.0;
-    double dist = 0.0, saveDist = 0.0;
-    long time = (long) 0.0;
-    double dTime = 0.0, dDist = 0.0;
-    double totalTime = 0.0, saveTotalTime = 0.0, totalDistance = 0.0;
-
-    // Need this variables to calculate distance
-    double a = 0.0, c = 0.0;
-
     // Check
     private boolean gps_enable = false;
     private boolean network_enable = false;
@@ -118,18 +106,16 @@ public class MainActivity extends AppCompatActivity {
 
     // current location
     GeoPoint currentLocation;
+    Point utmCurrent;
     GeoPoint destination;
+    Point utmDestination;
     boolean isCurrent = false;
-
 
     // to draw polyline
     Polyline line;
     Polyline pathLine;
     ArrayList<GeoPoint> pathPoints = new ArrayList<>();
-    ArrayList<GeoPoint> path = new ArrayList<>();
-
-    GeoPoint currentPnt, nextPnt;
-    double ttff = 5.0;
+    ArrayList<Point> pathUtm = new ArrayList<>();
 
     // AR variables
     private ArFragment arCam;
@@ -263,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
         directionBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                OkHttpClient client = new OkHttpClient().newBuilder().build();
+
                 String url = "https://api.openrouteservice.org/" +
                         "v2/directions/driving-car?api_key=" +
                         getString(R.string.api_key)+
@@ -271,13 +257,12 @@ public class MainActivity extends AppCompatActivity {
                         currentLocation.getLongitude()+","+ currentLocation.getLatitude()+
                         "&end=" +
                         destination.getLongitude()+"," +destination.getLatitude();
-                Request request = new Request.Builder().url(url)
-                        .method("GET", null)
-                        .build();
+                    API directionApi = new API(url, "GET");
 
                 // Parse json response
                 try {
-                    Response response = client.newCall(request).execute();
+                    directionApi.sendRequest();
+                    Response response = directionApi.getResponse();
                     String jsonData = response.body().string();
                     JSONObject jsonObject = new JSONObject(jsonData);
                     JSONArray features = jsonObject.getJSONArray("features");
@@ -289,14 +274,21 @@ public class MainActivity extends AppCompatActivity {
                                 pathPointJson.getDouble(1),
                                 pathPointJson.getDouble(0)
                         );
+
+
+                        Point utmPoint = convert2utm(pathPoint);
+
+                        pathUtm.add(utmPoint);
+
                         pathPoints.add(pathPoint);
 
                     }
+
                     drawCustomPolyline(pathPoints);
                    // Log.d("response", "============== "+ pathPoints);
 
 
-                } catch (IOException | JSONException e) {
+                } catch (JSONException | IOException e) {
                     e.printStackTrace();
                 }
 
@@ -309,6 +301,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
                 destination = p;
+                try {
+                    utmDestination = convert2utm(destination);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
 
                 addMarkerLocation(p);
                 return false;
@@ -361,6 +360,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    private Point convert2utm(GeoPoint pnt) throws IOException, JSONException {
+        // Convert to UTM API
+        String convert2UTMUrl = "https://geodesy.noaa.gov/api/ncat/llh?" +
+                "lat="+pnt.getLatitude()+
+                "&lon="+pnt.getLongitude()+
+                "&a=6378160.0&invf=298.25";
+
+        API convertAPI = new API(convert2UTMUrl, "GET");
+        convertAPI.sendRequest();
+        Response convertRes = convertAPI.getResponse();
+        String convertJsonData = convertRes.body().string();
+
+        // Parse convert response
+        JSONObject convertJsonObject = new JSONObject(convertJsonData);
+
+        double east = convertJsonObject.getDouble("utmEasting");
+        double north = convertJsonObject.getDouble("utmNorthing");
+
+        return new Point(east, north);
     }
 
     private void updateNode() {
@@ -430,93 +450,16 @@ public class MainActivity extends AppCompatActivity {
             if (location != null) {
                 // locationManager.removeUpdates(locationListener);
 
-                // first time running this method
-                // just set dLat1, dLon1 and first time
-                if (dLat1 == 0.0 && dLon1 == 0.0) {
-                    dLat1 = location.getLatitude();
-                    dLon1 = location.getLongitude();
-                    time = location.getTime();
-                } else {
-                    // calculate distance
-                    //  https://www.tabnine.com/code/java/methods/java.lang.Math/toRadians?snippet=59212f4b4758780004fb373b
-                    dLat2 = location.getLatitude();
-                    dLon2 = location.getLongitude();
-                    deltaLat = Math.toRadians(dLat2 - dLat1);
-                    deltaLon = Math.toRadians(dLon2 - dLon1);
-                    a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-                            Math.cos(Math.toRadians(dLat1)) * Math.cos(Math.toRadians(dLat2)) *
-                                    Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-                    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                    dist = (6371000 * c);
-                    dDist = dist - saveDist;
-                    saveDist = dist;
-                    // keep total distance
-                    totalDistance = totalDistance + dist;
-//                    Log.d("dist", "============== "+ dist);
-
-                    // get time difference
-                    dTime = (location.getTime() - time) / 1000;
-//                    Log.d("dTime", "*****> "+dTime);
-                    // keep total time
-                    totalTime = totalTime + dTime;
-//                    Log.d("Difference", "*****> "+totalTime+ "-"+ saveTotalTime);
-                    // set first point to draw path polyline
-                    if (totalTime - saveTotalTime == dTime) {
-                        currentPnt = new GeoPoint(dLat1, dLon1);
-
-                        // after seconds, we set second point of polyline ...
-                    } else if (totalTime - saveTotalTime > 3 * dTime) {
-                        nextPnt = new GeoPoint(dLat2, dLon2);
-                        // some check to have a smooth and good path
-                        if ((currentPnt.getLatitude() - nextPnt.getLatitude() != 0.0 ||
-                                currentPnt.getLongitude() - nextPnt.getLongitude() != 0.0) &&
-                                dDist < 2.0 && totalTime > ttff) {
-                            // avoid from
-                            if (path.isEmpty()){
-                                currentPnt = nextPnt;
-                            }
-                            // draw polyline
-                            // drawPolyline();
-                            saveTotalTime = totalTime;
-                        }
-                    }
-                    // update location and time for next run
-                    dLat1 = dLat2;
-                    dLon1 = dLon2;
-                    time = location.getTime();
-//                    Log.d("dTime", "************** "+ dTime);
-
-                    // check navigation mode
-//                    if (navigateCheck) {
-//                        angle = compassOverlay.getOrientationProvider().getLastKnownOrientation();
-////                    Log.d("Angle", ""+angle);
-//                        angle = (360 - angle);
-//                        if (angle < 0)
-//                            angle += 360;
-//                        if (angle > 360)
-//                            angle -= 360;
-//
-//                        dAngle = angle - saveAngle;
-//                        saveAngle = angle;
-//                        // ignore small change in angle
-//                        if (dAngle > 4) {
-//                            osm.setMapOrientation((float) angle);
-//                        }
-//                    }
-
-                }
-
-                // reduce speed decimals
-                DecimalFormat df = new DecimalFormat("#.###");
-                df.setRoundingMode(RoundingMode.CEILING);
-
-//                txtLocation.setText("Location(lat, lon): " + df.format(dLat1) + ", " + df.format(dLon1));
-//                txtLat.setText("Lat: " + dLat1);
-//                txtLon.setText("Lon: " + dLon1);
-
-
                 // get current location
                 currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+
+                try {
+                    utmCurrent = convert2utm(currentLocation);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
 
                 // animate and update marker
                 try {
@@ -549,32 +492,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // draw polyline function
-    public void drawPolyline() {
+    // calculate distance
+    private double calcDistance(GeoPoint p1, GeoPoint p2) {
+        //  https://www.tabnine.com/code/java/methods/java.lang.Math/toRadians?snippet=59212f4b4758780004fb373b
+        double dLat1 = p1.getLatitude();
+        double dLon1 = p1.getLongitude();
+        double dLat2 = p2.getLatitude();
+        double dLon2 = p2.getLongitude();
+        double deltaLat = Math.toRadians(dLat2 - dLat1);
+        double deltaLon = Math.toRadians(dLon2 - dLon1);
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                Math.cos(Math.toRadians(dLat1)) * Math.cos(Math.toRadians(dLat2)) *
+                        Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double dist = (6371000 * c);
 
-        try {
-            osm.getOverlays().remove(line);
-        } catch (Exception ex) {
-
-        }
-
-//        Log.d("CurrentPnt", "***** > "+ currentPnt);
-//        Log.d("CurrentPnt", "***** > "+ nextPnt);
-        path.add(currentPnt);
-        path.add(nextPnt);
-        line.setPoints(path);
-        line.setInfoWindow(null);
-        line.getOutlinePaint().setStrokeCap(Paint.Cap.ROUND);
-        line.getOutlinePaint().setColor(Color.rgb(0, 191, 255));
-        // line.getPaint().setPathEffect(new DashPathEffect(new float[]{10, 20}, 0));
-//        line.getOutlinePaint().setStrokeWidth(20.0f);
-        line.getOutlinePaint().setStyle(Paint.Style.FILL);
-        line.getOutlinePaint().setAntiAlias(true);
-
-        osm.getOverlays().add(line);
-        osm.invalidate();
-
-
+        return dist;
     }
 
 
@@ -725,6 +658,8 @@ public class MainActivity extends AppCompatActivity {
         int internetPrms = ContextCompat.checkSelfPermission(this, android.Manifest.permission.INTERNET);
         int networkStat = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_NETWORK_STATE);
         int wifiStat = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE);
+        int cameraStat = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
+
 
 
         List<String> listPermission = new ArrayList<>();
@@ -745,6 +680,9 @@ public class MainActivity extends AppCompatActivity {
         }
         if (wifiStat != PackageManager.PERMISSION_GRANTED) {
             listPermission.add(Manifest.permission.ACCESS_WIFI_STATE);
+        }
+        if (cameraStat != PackageManager.PERMISSION_GRANTED) {
+            listPermission.add(Manifest.permission.CAMERA);
         }
         if (!listPermission.isEmpty()) {
             ActivityCompat.requestPermissions(this, listPermission.toArray(new String[listPermission.size()]), 1);
