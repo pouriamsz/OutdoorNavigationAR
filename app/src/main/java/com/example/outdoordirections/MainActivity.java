@@ -21,13 +21,9 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.provider.Settings;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.ar.sceneform.ux.ArFragment;
@@ -99,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
     Marker marker, locationMarker;
 
     // current location
-    GeoPoint center;
+    GeoPoint currentLocation;
     GeoPoint destination;
     boolean isCurrent = false;
 
@@ -153,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
                         "v2/directions/driving-car?api_key=" +
                         getString(R.string.api_key)+
                         "&start=" +
-                        center.getLongitude()+","+center.getLatitude()+
+                        currentLocation.getLongitude()+","+ currentLocation.getLatitude()+
                         "&end=" +
                         destination.getLongitude()+"," +destination.getLatitude();
                 Request request = new Request.Builder().url(url)
@@ -369,16 +365,16 @@ public class MainActivity extends AppCompatActivity {
 
 
                 // get current location
-                center = new GeoPoint(location.getLatitude(), location.getLongitude());
+                currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
 
                 // animate and update marker
                 try {
                     if (!isCurrent) {
-                        mc.animateTo(center);
+                        mc.animateTo(currentLocation);
                         isCurrent = true;
                     }
 
-                    addMarker(center);
+                    addMarker(currentLocation);
                 } catch (Exception ex) {
 
                 }
@@ -461,10 +457,10 @@ public class MainActivity extends AppCompatActivity {
 
 
     // update marker
-    public void addMarkerLocation(GeoPoint center) {
+    public void addMarkerLocation(GeoPoint destination) {
         osm.getOverlays().remove(locationMarker);
         locationMarker = new Marker(osm);
-        locationMarker.setPosition(center);
+        locationMarker.setPosition(destination);
         locationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         Drawable markerIcon = getResources().getDrawable(R.drawable.location);
         locationMarker.setIcon(markerIcon);
@@ -476,10 +472,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // update marker - current location
-    public void addMarker(GeoPoint center) {
+    public void addMarker(GeoPoint current) {
         osm.getOverlays().remove(marker);
         marker = new Marker(osm);
-        marker.setPosition(center);
+        marker.setPosition(current);
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
         Drawable markerIcon = getResources().getDrawable(R.drawable.mylocation32blue);
         marker.setIcon(markerIcon);
@@ -539,8 +535,8 @@ public class MainActivity extends AppCompatActivity {
 
 
         try {
-            mc.animateTo(center);
-            addMarker(center);
+            mc.animateTo(currentLocation);
+            addMarker(currentLocation);
 
         } catch (Exception ex) {
 
