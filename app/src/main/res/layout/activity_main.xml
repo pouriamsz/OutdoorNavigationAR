@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+
+    <fragment
+        android:id="@+id/arCameraArea"
+        android:name="com.google.ar.sceneform.ux.ArFragment"
+        android:layout_width="match_parent"
+        android:layout_height="308dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <org.osmdroid.views.MapView
+        android:id="@+id/mapview"
+        android:layout_width="389dp"
+        android:layout_height="413dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="13dp"
+        android:layout_marginTop="318dp"
+        android:layout_marginEnd="10dp"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <ImageButton
+        android:id="@+id/btnLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="344dp"
+        android:layout_marginTop="674dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="0"
+        android:background="#00FFFFFF"
+        android:paddingRight="10dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_menu_mylocation"
+        android:tag="currentLocation"
+        app:tint="#2196F3" />
+
+    <Button
+        android:id="@+id/btnDirection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_weight="0"
+        android:text="Directions"
+        app:backgroundTint="#009688"
+        />
+
+
+
+
+</RelativeLayout>
