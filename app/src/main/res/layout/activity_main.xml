@@ -68,7 +68,7 @@
         android:layout_marginStart="15dp"
         android:layout_marginBottom="15dp"
         android:layout_weight="0"
-        android:text="Open Camera"
+        android:text="Show on camera"
         app:backgroundTint="#009688" />
 
 
