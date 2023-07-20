@@ -20,6 +20,7 @@ import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
@@ -29,9 +30,22 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.ar.core.Anchor;
+import com.google.ar.core.Pose;
+import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.Camera;
+import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.collision.Ray;
+import com.google.ar.sceneform.math.Vector3;
+import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
+import com.google.ar.sceneform.ux.BaseArFragment;
+import com.google.ar.sceneform.ux.TransformableNode;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -69,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     // UI variables
     ImageButton getLocation;
     Button directionBtn, openCamera;
+    TextView testText;
 
     // Location
     public LocationManager locationManager;
@@ -117,7 +132,12 @@ public class MainActivity extends AppCompatActivity {
     double ttff = 5.0;
 
     private ArFragment arCam;
+    private AnchorNode oldWaterMark = null;
+    private Node oldNode = null;
+    ModelRenderable model;
+    private int deviceHeight, deviceWidth;
 
+    private int count =0;
 
     public static boolean checkSystemSupport(Activity activity) {
 
@@ -152,10 +172,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Device size
-//        DisplayMetrics displayMetrics = new DisplayMetrics();
-//        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-//        int deviceHeight = displayMetrics.heightPixels;
-//        int deviceWidth = displayMetrics.widthPixels;
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        deviceHeight = displayMetrics.heightPixels;
+        deviceWidth = displayMetrics.widthPixels;
 
 
         // initialize UI variables
@@ -167,11 +187,62 @@ public class MainActivity extends AppCompatActivity {
 //        RelativeLayout.LayoutParams mapViewParams = new RelativeLayout.LayoutParams(deviceWidth, deviceHeight/2);
 //        osm.setLayoutParams(mapViewParams);
 
+        testText = findViewById(R.id.testTextView);
+
+        // AR Camera Button
         openCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // AR camera
-                arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+
+                if (checkSystemSupport(MainActivity.this)) {
+
+                    ModelRenderable.builder()
+                            .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
+                            .setIsFilamentGltf(true)
+                            .build()
+                            .thenAccept(modelRenderable -> setModel(modelRenderable))
+                            .exceptionally(throwable -> {
+                                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                builder.setMessage("Something is not right" + throwable.getMessage()).show();
+                                return null;
+                            });
+
+                    // ArFragment is linked up with its respective id used in the activity_main.xml
+                    arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+                    arCam.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
+                        @Override
+                        public void onUpdate(FrameTime frameTime) {
+                            arCam.onUpdate(frameTime);
+                            if(oldNode!=null){
+                                //Vector3 pos = new Vector3(10,10,10);
+                                //oldNode.setLocalPosition(pos);
+                                //oldNode.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getWorldRotation());
+                                if (count%10==0){
+                                    addNode(model);
+                                    testText.setText(count+"");
+                                }
+                                count++;
+                            }
+                        }
+                    });
+                    arCam.setOnTapArPlaneListener((hitResult, plane, motionEvent) -> {
+                        // the 3d model comes to the scene only
+                        // when clickNo is one that means once
+                        Anchor anchor = hitResult.createAnchor();
+                        ModelRenderable.builder()
+                                .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
+                                .setIsFilamentGltf(true)
+                                .build()
+                                .thenAccept(modelRenderable -> addNode(modelRenderable))
+                                .exceptionally(throwable -> {
+                                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                    builder.setMessage("Something is not right" + throwable.getMessage()).show();
+                                    return null;
+                                });
+                    });
+                } else {
+                    return;
+                }
 
             }
         });
@@ -281,6 +352,32 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void setModel(ModelRenderable modelRenderable){
+        model = modelRenderable;
+    }
+
+    private void addNode(ModelRenderable modelRenderable) {
+        // Remove old object
+        // TODO: can we update instead of remove and add again.
+        if(oldNode!=null){
+            arCam.getArSceneView().getScene().removeChild(oldNode);
+        }
+        Node node = new Node();
+        node.setParent(arCam.getArSceneView().getScene());
+        Camera camera = arCam.getArSceneView().getScene().getCamera();
+        // TODO: Cast ray to center of screen
+        Ray ray = camera.screenPointToRay(200, 500);
+
+        TransformableNode model = new TransformableNode(arCam.getTransformationSystem());
+        model.setParent(node);
+        model.setRenderable(modelRenderable);
+        model.setLocalPosition(ray.getPoint(1f));
+        model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
+
+        oldNode = node;
+        arCam.getArSceneView().getScene().addChild(node);
+
+    }
 
     @Override
     public void onPause() {
