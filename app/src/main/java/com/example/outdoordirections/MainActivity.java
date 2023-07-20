@@ -7,6 +7,8 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import android.Manifest;
+import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -18,6 +20,7 @@ import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.provider.Settings;
@@ -53,6 +56,7 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -115,6 +119,28 @@ public class MainActivity extends AppCompatActivity {
     private ArFragment arCam;
 
 
+    public static boolean checkSystemSupport(Activity activity) {
+
+        // checking whether the API version of the running Android >= 24
+        // that means Android Nougat 7.0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            String openGlVersion = ((ActivityManager) Objects.requireNonNull(activity.getSystemService(Context.ACTIVITY_SERVICE))).getDeviceConfigurationInfo().getGlEsVersion();
+
+            // checking whether the OpenGL version >= 3.0
+            if (Double.parseDouble(openGlVersion) >= 3.0) {
+                return true;
+            } else {
+                Toast.makeText(activity, "App needs OpenGl Version 3.0 or later", Toast.LENGTH_SHORT).show();
+                activity.finish();
+                return false;
+            }
+        } else {
+            Toast.makeText(activity, "App does not support required Build Version", Toast.LENGTH_SHORT).show();
+            activity.finish();
+            return false;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -146,6 +172,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 // AR camera
                 arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+
             }
         });
 
