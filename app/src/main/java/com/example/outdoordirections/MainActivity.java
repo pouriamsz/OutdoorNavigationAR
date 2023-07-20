@@ -21,9 +21,11 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.ar.sceneform.ux.ArFragment;
@@ -62,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
 
     // UI variables
     ImageButton getLocation;
-    Button directionBtn;
+    Button directionBtn, openCamera;
 
     // Location
     public LocationManager locationManager;
@@ -122,9 +124,6 @@ public class MainActivity extends AppCompatActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        // AR camera
-        arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
-
 
         // Device size
 //        DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -136,11 +135,21 @@ public class MainActivity extends AppCompatActivity {
         // initialize UI variables
         getLocation = (ImageButton) findViewById(R.id.btnLocation);
         directionBtn = findViewById(R.id.btnDirection);
+        openCamera = findViewById(R.id.btnCamera);
         osm = findViewById(R.id.mapview);
         // Change map view size
 //        RelativeLayout.LayoutParams mapViewParams = new RelativeLayout.LayoutParams(deviceWidth, deviceHeight/2);
 //        osm.setLayoutParams(mapViewParams);
 
+        openCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // AR camera
+                arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+            }
+        });
+
+        // Request Direction
         directionBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -156,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
                         .method("GET", null)
                         .build();
 
+                // Parse json response
                 try {
                     Response response = client.newCall(request).execute();
                     String jsonData = response.body().string();
@@ -185,6 +195,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Tap destination on map
         osm.getOverlays().add(new MapEventsOverlay(new MapEventsReceiver() {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
