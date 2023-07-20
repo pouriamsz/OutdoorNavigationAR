@@ -88,15 +88,14 @@ public class MainActivity extends AppCompatActivity {
     public LocationManager locationManager;
     public LocationListener locationListener = new MyLocationListener();
 
-    // Lat, Lon, distance, Speed, time, angle
+    // Lat, Lon, distance, Speed, time
     double dLat1 = 0.0, dLon1 = 0.0;
     double dLat2 = 0.0, dLon2 = 0.0;
     double deltaLat = 0.0, deltaLon = 0.0;
     double dist = 0.0, saveDist = 0.0;
     long time = (long) 0.0;
-    double dTime = 0.0, dDist = 0.0, dAngle = 0.0;
+    double dTime = 0.0, dDist = 0.0;
     double totalTime = 0.0, saveTotalTime = 0.0, totalDistance = 0.0;
-    double angle = 0.0, saveAngle = 0.0;
 
     // Need this variables to calculate distance
     double a = 0.0, c = 0.0;
@@ -123,20 +122,19 @@ public class MainActivity extends AppCompatActivity {
     // to draw polyline
     Polyline line;
     Polyline pathLine;
-
+    ArrayList<GeoPoint> pathPoints = new ArrayList<>();
     ArrayList<GeoPoint> path = new ArrayList<>();
-    ArrayList<GeoPoint> directionPath = new ArrayList<>();
 
     GeoPoint currentPnt, nextPnt;
     double ttff = 5.0;
 
+    // AR variables
     private ArFragment arCam;
     private Node oldNode = null;
     TransformableNode model;
     private int deviceHeight, deviceWidth;
     private Node node = new Node();
-
-    private int count =0;
+    private int count = 0;
 
     public static boolean checkSystemSupport(Activity activity) {
 
@@ -254,7 +252,6 @@ public class MainActivity extends AppCompatActivity {
                     JSONArray features = jsonObject.getJSONArray("features");
                     JSONObject geometry = features.getJSONObject(0).getJSONObject("geometry");
                     JSONArray pathCoordinates = geometry.getJSONArray("coordinates");
-                    ArrayList<GeoPoint> pathPoints = new ArrayList<GeoPoint>();
                     for (int i = 0; i < pathCoordinates.length(); i++) {
                         JSONArray pathPointJson = pathCoordinates.getJSONArray(i);
                         GeoPoint pathPoint = new GeoPoint(
