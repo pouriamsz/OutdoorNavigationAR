@@ -209,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
                                     .thenAccept(
                                             material -> {
 
+                                                // TODO:
                                                 ModelRenderable model = ShapeFactory.makeCube(
                                                         new Vector3(.3f, .006f, 1.0f),
                                                         Vector3.zero(), material);
@@ -218,6 +219,9 @@ public class MainActivity extends AppCompatActivity {
 
                                             }
                                     );
+                        }).exceptionally(throwable -> {
+                            Toast.makeText(MainActivity.this, "error:"+throwable.getCause(), Toast.LENGTH_SHORT).show();
+                            return null;
                         });
 
 //                        ModelRenderable.builder()

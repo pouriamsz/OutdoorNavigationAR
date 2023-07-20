@@ -152,13 +152,13 @@
   ],
   "images": [
     {
-      "uri": "textures/Arrow5_baseColor.png"
+      "uri": "/Arrow5_baseColor.png"
     },
     {
-      "uri": "textures/Arrow5_metallicRoughness.png"
+      "uri": "/Arrow5_metallicRoughness.png"
     },
     {
-      "uri": "textures/Arrow5_normal.png"
+      "uri": "/Arrow5_normal.png"
     }
   ],
   "materials": [
