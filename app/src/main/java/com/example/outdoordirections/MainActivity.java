@@ -42,7 +42,10 @@ import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.collision.Ray;
 import com.google.ar.sceneform.math.Vector3;
+import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.rendering.ShapeFactory;
+import com.google.ar.sceneform.rendering.Texture;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
@@ -193,16 +196,40 @@ public class MainActivity extends AppCompatActivity {
                 if (checkSystemSupport(MainActivity.this)) {
 
                     if (oldNode==null){
-                        ModelRenderable.builder()
-                                .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
-                                .setIsFilamentGltf(true)
-                                .build()
-                                .thenAccept(modelRenderable -> addNode(modelRenderable))
-                                .exceptionally(throwable -> {
-                                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                                    builder.setMessage("Something is not right" + throwable.getMessage()).show();
-                                    return null;
-                                });
+                        Texture.Sampler sampler = Texture.Sampler.builder()
+                                .setMinFilter(Texture.Sampler.MinFilter.LINEAR_MIPMAP_LINEAR)
+                                .setMagFilter(Texture.Sampler.MagFilter.LINEAR)
+                                .build();
+
+                        Texture.builder()
+                                .setSource(() -> getApplicationContext().getAssets().open("arrow_texture.png"))
+                                .setSampler(sampler)
+                                .build().thenAccept(texture -> {
+                            MaterialFactory.makeTransparentWithTexture(getApplicationContext(), texture) //new Color(0, 255, 244))
+                                    .thenAccept(
+                                            material -> {
+
+                                                ModelRenderable model = ShapeFactory.makeCube(
+                                                        new Vector3(.3f, .006f, 1.0f),
+                                                        Vector3.zero(), material);
+
+
+                                                addNode(model);
+
+                                            }
+                                    );
+                        });
+
+//                        ModelRenderable.builder()
+//                                .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
+//                                .setIsFilamentGltf(true)
+//                                .build()
+//                                .thenAccept(modelRenderable -> addNode(modelRenderable))
+//                                .exceptionally(throwable -> {
+//                                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+//                                    builder.setMessage("Something is not right" + throwable.getMessage()).show();
+//                                    return null;
+//                                });
                     }
 
 
@@ -339,13 +366,12 @@ public class MainActivity extends AppCompatActivity {
         Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
 
         model.setLocalPosition(ray.getPoint(1f));
-        model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
+        // model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
 
     }
 
     private void addNode(ModelRenderable modelRenderable) {
         // Remove old object
-        // TODO: can we update instead of remove and add again.
         if(oldNode!=null){
             arCam.getArSceneView().getScene().removeChild(oldNode);
         }
@@ -358,7 +384,7 @@ public class MainActivity extends AppCompatActivity {
         model.setParent(node);
         model.setRenderable(modelRenderable);
         model.setLocalPosition(ray.getPoint(1f));
-        model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
+        // model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
 
         oldNode = node;
         arCam.getArSceneView().getScene().addChild(node);
