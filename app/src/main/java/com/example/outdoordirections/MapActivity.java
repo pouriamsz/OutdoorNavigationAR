@@ -114,7 +114,7 @@ public class MapActivity extends AppCompatActivity {
             public void onClick(View view) {
 
                 // TODO
-                if (route.size() > 0){
+                if (route != null && route.size()>0){
                     new Handler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -137,50 +137,52 @@ public class MapActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                String url = "https://api.openrouteservice.org/" +
-                        "v2/directions/driving-car?api_key=" +
-                        getString(R.string.api_key)+
-                        "&start=" +
-                        currentLocation.getLongitude()+","+ currentLocation.getLatitude()+
-                        "&end=" +
-                        destination.getLongitude()+"," +destination.getLatitude();
+                if (destination != null){
+                    String url = "https://api.openrouteservice.org/" +
+                            "v2/directions/driving-car?api_key=" +
+                            getString(R.string.api_key)+
+                            "&start=" +
+                            currentLocation.getLongitude()+","+ currentLocation.getLatitude()+
+                            "&end=" +
+                            destination.getLongitude()+"," +destination.getLatitude();
                     API directionApi = new API(url, "GET");
 
-                // Parse json response
-                try {
-                    directionApi.sendRequest();
-                    Response response = directionApi.getResponse();
-                    String jsonData = response.body().string();
-                    JSONObject jsonObject = new JSONObject(jsonData);
-                    JSONArray features = jsonObject.getJSONArray("features");
-                    JSONObject geometry = features.getJSONObject(0).getJSONObject("geometry");
-                    JSONArray pathCoordinates = geometry.getJSONArray("coordinates");
-                    ArrayList<Point> pathUtm = new ArrayList<>();
-                    ArrayList<GeoPoint> pathPoints = new ArrayList<>();
-                    for (int i = 0; i < pathCoordinates.length(); i++) {
-                        JSONArray pathPointJson = pathCoordinates.getJSONArray(i);
-                        GeoPoint pathPoint = new GeoPoint(
-                                pathPointJson.getDouble(1),
-                                pathPointJson.getDouble(0)
-                        );
+                    // Parse json response
+                    try {
+                        directionApi.sendRequest();
+                        Response response = directionApi.getResponse();
+                        String jsonData = response.body().string();
+                        JSONObject jsonObject = new JSONObject(jsonData);
+                        JSONArray features = jsonObject.getJSONArray("features");
+                        JSONObject geometry = features.getJSONObject(0).getJSONObject("geometry");
+                        JSONArray pathCoordinates = geometry.getJSONArray("coordinates");
+                        ArrayList<Point> pathUtm = new ArrayList<>();
+                        ArrayList<GeoPoint> pathPoints = new ArrayList<>();
+                        for (int i = 0; i < pathCoordinates.length(); i++) {
+                            JSONArray pathPointJson = pathCoordinates.getJSONArray(i);
+                            GeoPoint pathPoint = new GeoPoint(
+                                    pathPointJson.getDouble(1),
+                                    pathPointJson.getDouble(0)
+                            );
 
 
-                        Point utmPoint = new Point(0.0, 0.0);
-                        utmPoint.convert2utm(pathPoint);
+                            Point utmPoint = new Point(0.0, 0.0);
+                            utmPoint.convert2utm(pathPoint);
 
-                        pathUtm.add(utmPoint);
+                            pathUtm.add(utmPoint);
 
-                        pathPoints.add(pathPoint);
+                            pathPoints.add(pathPoint);
 
+                        }
+
+                        route = new Route(pathUtm);
+                        drawCustomPolyline(pathPoints);
+                        // Log.d("response", "============== "+ pathPoints);
+
+
+                    } catch (JSONException | IOException e) {
+                        e.printStackTrace();
                     }
-
-                    route = new Route(pathUtm);
-                    drawCustomPolyline(pathPoints);
-                   // Log.d("response", "============== "+ pathPoints);
-
-
-                } catch (JSONException | IOException e) {
-                    e.printStackTrace();
                 }
 
             }
