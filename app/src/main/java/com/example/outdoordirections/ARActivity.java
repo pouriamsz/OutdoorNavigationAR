@@ -8,14 +8,17 @@ import androidx.preference.PreferenceManager;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.outdoordirections.model.Point;
@@ -25,6 +28,7 @@ import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.collision.Ray;
+import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
@@ -89,11 +93,12 @@ public class ARActivity extends AppCompatActivity {
         setContentView(R.layout.activity_aractivity);
 
 
-        ArrayList<Point> points = new ArrayList<Point>();
-        points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
-        route.setPoints(points);
+//        ArrayList<Point> points = new ArrayList<Point>();
+//        points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
+//        route.setPoints(points);
 
-        Log.d("Route", " =======  "+route.size());
+        // Log.d("Route", " =======  "+route.size());
+
 
         // current location
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
@@ -107,12 +112,17 @@ public class ARActivity extends AppCompatActivity {
 
         if (checkSystemSupport(this)) {
 
-            if (oldNode==null){
-                loadModel();
-            }
-
             // ArFragment is linked up with its respective id used in the activity_main.xml
             arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+            if (oldNode==null){
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadModel();
+                    }
+                },5000);
+            }
+
             arCam.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
                 @Override
                 public void onUpdate(FrameTime frameTime) {
@@ -177,15 +187,13 @@ public class ARActivity extends AppCompatActivity {
     private void updateNode() {
 
         Camera camera = arCam.getArSceneView().getScene().getCamera();
-        // TODO: Cast ray to center of screen
-        Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/2);
 
-        // TODO: This distance is so important, find a way to calculate that
-        // Maybe a large number could be good at this point
-        model.setLocalPosition(ray.getPoint(2f));
+
+        Vector3 rp = ray.getPoint(2f);
+        model.setLocalPosition(rp);
         // TODO: Quaternion
         //model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
-
     }
 
     private void addNode(ModelRenderable modelRenderable) {
@@ -195,13 +203,12 @@ public class ARActivity extends AppCompatActivity {
         }
         node.setParent(arCam.getArSceneView().getScene());
         Camera camera = arCam.getArSceneView().getScene().getCamera();
-        // TODO: Cast ray to center of screen
-        Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/2);
 
         model = new TransformableNode(arCam.getTransformationSystem());
         model.setParent(node);
         model.setRenderable(modelRenderable);
-        model.setLocalPosition(ray.getPoint(1f));
+        model.setLocalPosition(ray.getPoint(2f));
         // model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
 
         oldNode = node;
