@@ -34,6 +34,7 @@ import android.widget.Toast;
 
 import com.example.outdoordirections.model.API;
 import com.example.outdoordirections.model.Point;
+import com.example.outdoordirections.model.Route;
 import com.google.ar.sceneform.Camera;
 import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.Node;
@@ -74,7 +75,7 @@ import uk.me.jstott.jcoord.LatLng;
 import uk.me.jstott.jcoord.OSRef;
 
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+public class MainActivity extends AppCompatActivity {
 
 
     // UI variables
@@ -96,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private IMapController mc;
     private CompassOverlay compassOverlay;
     private RotationGestureOverlay mRotationGestureOverlay;
-    Marker marker, locationMarker;
+    Marker currentMarker, destinationMarker;
 
     // current location
     GeoPoint currentLocation;
@@ -105,11 +106,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Point utmDestination;
     boolean isCurrent = false;
 
-    // to draw polyline
-    Polyline line;
+    // Route
+    Route route;
     Polyline pathLine;
-    ArrayList<GeoPoint> pathPoints = new ArrayList<>();
-    ArrayList<Point> pathUtm = new ArrayList<>();
 
     // AR variables
     private ArFragment arCam;
@@ -118,18 +117,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int deviceHeight, deviceWidth;
     private Node node = new Node();
     private int count = 0;
-
-    // Sensor variables
-    private float Rot[] = null; //for gravity rotational data
-    private float I[] = null; //for magnetic rotational data
-    private float accels[] = new float[3];
-    private float mags[] = new float[3];
-    private float[] values = new float[3];
-    private float yaw;
-    private float pitch;
-    private float roll;
-    private SensorManager sensorManager;
-    private Sensor sensor;
 
     public static boolean checkSystemSupport(Activity activity) {
 
@@ -162,10 +149,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        // TODO: Remove sensor
-        //sensor manager & sensor required to calculate yaw
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
 
         // Device size
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -278,6 +261,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     JSONArray features = jsonObject.getJSONArray("features");
                     JSONObject geometry = features.getJSONObject(0).getJSONObject("geometry");
                     JSONArray pathCoordinates = geometry.getJSONArray("coordinates");
+                    ArrayList<Point> pathUtm = new ArrayList<>();
+                    ArrayList<GeoPoint> pathPoints = new ArrayList<>();
                     for (int i = 0; i < pathCoordinates.length(); i++) {
                         JSONArray pathPointJson = pathCoordinates.getJSONArray(i);
                         GeoPoint pathPoint = new GeoPoint(
@@ -294,6 +279,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                     }
 
+                    route = new Route(pathUtm);
                     drawCustomPolyline(pathPoints);
                    // Log.d("response", "============== "+ pathPoints);
 
@@ -329,9 +315,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }));
 
-        marker = new Marker(osm);
-        locationMarker = new Marker(osm);
-        line = new Polyline(osm);
+        currentMarker = new Marker(osm);
+        destinationMarker = new Marker(osm);
         pathLine = new Polyline(osm);
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         // check needed permissions
@@ -423,9 +408,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // locationManager.removeUpdates(locationListener);
         osm.onPause();
 
-        // Sensor
-        sensorManager.unregisterListener(this);
-
     }
 
     @Override
@@ -440,17 +422,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
         osm.onResume();
 
-        // Sensor
-        Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        if (accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer,
-                    SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
-        }
-        Sensor magneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        if (magneticField != null) {
-            sensorManager.registerListener(this, magneticField,
-                    SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
-        }
     }
 
     @Override
@@ -460,48 +431,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // stop request gps location
             locationManager.removeUpdates(locationListener);
         }
-    }
-
-    // Sensor
-    @Override
-    public void onSensorChanged(SensorEvent sensorEvent) {
-        switch (sensorEvent.sensor.getType())
-        {
-            case Sensor.TYPE_MAGNETIC_FIELD:
-                mags = sensorEvent.values.clone();
-                break;
-            case Sensor.TYPE_ACCELEROMETER:
-                accels = sensorEvent.values.clone();
-                break;
-        }
-
-        if (mags != null && accels != null) {
-            Rot = new float[9];
-            I= new float[9];
-            SensorManager.getRotationMatrix(Rot, I, accels, mags);
-
-            // Correct if screen is in Landscape
-            float[] outR = new float[9];
-            SensorManager.remapCoordinateSystem(Rot, SensorManager.AXIS_X,SensorManager.AXIS_Z, outR);
-            SensorManager.getOrientation(outR, values);
-
-            // here we calculated the final yaw(azimuth), roll & pitch of the device.
-            // multiplied by a global standard value to get accurate results
-
-            // this is the yaw or the azimuth we need
-            yaw = values[0] * 57.2957795f;
-            pitch =values[1] * 57.2957795f;
-            roll = values[2] * 57.2957795f;
-
-            //retrigger the loop when things are repopulated
-            mags = null;
-            accels = null;
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-
     }
 
     // LocationListener class
@@ -606,27 +535,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     // update marker
     public void addMarkerLocation(GeoPoint destination) {
-        osm.getOverlays().remove(locationMarker);
-        locationMarker = new Marker(osm);
-        locationMarker.setPosition(destination);
-        locationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        osm.getOverlays().remove(destinationMarker);
+        destinationMarker = new Marker(osm);
+        destinationMarker.setPosition(destination);
+        destinationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         Drawable markerIcon = getResources().getDrawable(R.drawable.location);
-        locationMarker.setIcon(markerIcon);
+        destinationMarker.setIcon(markerIcon);
 
 
-        osm.getOverlays().add(locationMarker);
+        osm.getOverlays().add(destinationMarker);
         osm.invalidate();
-        locationMarker.setTitle("Destination");
+        destinationMarker.setTitle("Destination");
     }
 
     // update marker - current location
     public void addMarker(GeoPoint current) {
-        osm.getOverlays().remove(marker);
-        marker = new Marker(osm);
-        marker.setPosition(current);
-        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        osm.getOverlays().remove(currentMarker);
+        currentMarker = new Marker(osm);
+        currentMarker.setPosition(current);
+        currentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
         Drawable markerIcon = getResources().getDrawable(R.drawable.mylocation32blue);
-        marker.setIcon(markerIcon);
+        currentMarker.setIcon(markerIcon);
 
 //        for (int i = 0; i < osm.getOverlays().size(); i++) {
 //            Overlay overlay = osm.getOverlays().get(i);
@@ -636,9 +565,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //        }
 
 //        osm.getOverlays().clear();
-        osm.getOverlays().add(marker);
+        osm.getOverlays().add(currentMarker);
         osm.invalidate();
-        marker.setTitle("Current Location");
+        currentMarker.setTitle("Current Location");
     }
 
     // get current location
