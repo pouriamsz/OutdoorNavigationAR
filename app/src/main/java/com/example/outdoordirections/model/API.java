@@ -1,9 +1,6 @@
-package com.example.outdoordirections;
-
-import org.json.JSONException;
+package com.example.outdoordirections.model;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;

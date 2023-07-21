@@ -1,4 +1,4 @@
-package com.example.outdoordirections;
+package com.example.outdoordirections.model;
 
 public class Point {
     double x;
