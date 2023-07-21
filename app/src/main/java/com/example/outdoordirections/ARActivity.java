@@ -69,6 +69,9 @@ public class ARActivity extends AppCompatActivity {
     private Node node = new Node();
     private int count = 0;
 
+    int ni;
+
+
     public static boolean checkSystemSupport(Activity activity) {
 
         // checking whether the API version of the running Android >= 24
@@ -99,6 +102,12 @@ public class ARActivity extends AppCompatActivity {
 
         ArrayList<Point> points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
         route.setPoints(points);
+
+        if (route.size()>3){
+            ni = 2;
+        }else{
+            ni = 1;
+        }
 
         // Log.d("Route", " =======  "+route.size());
 
@@ -198,33 +207,29 @@ public class ARActivity extends AppCompatActivity {
         // TODO: Quaternion
         Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
         com.example.outdoordirections.model.Quaternion qc = new com.example.outdoordirections.model.Quaternion(q);
-        Vector3 n = qc.normal();
-        Point normalPoint = new Point(n.x, n.z);
+        Vector3 normal = qc.normal();
+        Point normalPoint = new Point(normal.x, normal.z);
 
-        int ni =0;
+
 
         if (utmCurrent!=null){
             viewPoint = utmCurrent.add(normalPoint.mulScalar(2.0));
-            while (true){
-                ni = route.findNear(viewPoint);
-                Point np = route.getPoints().get(ni);
-                if (np.distance(viewPoint)<1.0){
-                    if (!route.finish(ni)){
-                        ni = route.next(ni);
-                    }else{
-                        // route has finished
-                        if(oldNode!=null){
-                            arCam.getArSceneView().getScene().removeChild(oldNode);
-                        }
-                    }
+            Point currentPnt = route.getPoints().get(ni);
+            Point prevPnt = route.getPoints().get(ni-1);
+            if (currentPnt.distance(viewPoint)<prevPnt.distance(viewPoint)){
+                if (!route.finish(ni+1)){
+                    ni = route.next(ni);
                 }else{
-                    break;
+                    // route has finished
+//                    if(oldNode!=null){
+//                        arCam.getArSceneView().getScene().removeChild(oldNode);
+//                    }
                 }
             }
 
+            test.setText(""+ni);
             Point difNormal = viewPoint.sub(route.getPoints().get(ni)).normalize();
-            Point down = new Point(0,0);
-            down.setZ(-1);
+            Point down = new Point(0,-1);
             com.example.outdoordirections.model.Quaternion qr = new com.example.outdoordirections.model.Quaternion(new Quaternion());
             qr.setFrom2Vec(down, difNormal);
             model.setLocalRotation(qr.getQuaternion());
