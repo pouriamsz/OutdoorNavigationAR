@@ -46,6 +46,9 @@ import java.util.Objects;
 
 public class ARActivity extends AppCompatActivity {
 
+    // UI
+    TextView test;
+
     // Location
     public LocationManager locationManager;
     public LocationListener locationListener = new ARActivity.MyLocationListener();
@@ -53,6 +56,7 @@ public class ARActivity extends AppCompatActivity {
     // Current location
     GeoPoint currentLocation;
     Point utmCurrent = new Point(0,0);
+    Point viewPoint = new Point(0,0);
 
     // Route
     Route route = new Route(new ArrayList<Point>());
@@ -99,7 +103,7 @@ public class ARActivity extends AppCompatActivity {
 
         // Log.d("Route", " =======  "+route.size());
 
-
+        test = findViewById(R.id.testText);
         // current location
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         getMyLocation();
@@ -193,6 +197,15 @@ public class ARActivity extends AppCompatActivity {
         Vector3 rp = ray.getPoint(2f);
         model.setLocalPosition(rp);
         // TODO: Quaternion
+        Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
+        com.example.outdoordirections.model.Quaternion qc = new com.example.outdoordirections.model.Quaternion(q);
+        Vector3 n = qc.normal();
+        Point np = new Point(n.x, n.z);
+
+        if (utmCurrent!=null){
+            viewPoint = utmCurrent.add(np.mulScalar(2.0));
+        }
+
         //model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
     }
 

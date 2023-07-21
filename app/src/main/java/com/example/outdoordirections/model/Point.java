@@ -44,4 +44,20 @@ public class Point implements Serializable {
         this.x = easting;
         this.y = northing;
     }
+
+    public Point add(Point p){
+        Point pc = new Point(this.x, this.y);
+        pc.x = pc.x+p.x;
+        pc.y = pc.y+p.y;
+
+        return pc;
+    }
+
+    public Point mulScalar(double s){
+        Point pc = new Point(this.x, this.y);
+        pc.x = pc.x*s;
+        pc.y = pc.y*s;
+
+        return pc;
+    }
 }
