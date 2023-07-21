@@ -97,9 +97,8 @@ public class ARActivity extends AppCompatActivity {
         setContentView(R.layout.activity_aractivity);
 
 
-//        ArrayList<Point> points = new ArrayList<Point>();
-//        points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
-//        route.setPoints(points);
+        ArrayList<Point> points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
+        route.setPoints(points);
 
         // Log.d("Route", " =======  "+route.size());
 
@@ -200,13 +199,37 @@ public class ARActivity extends AppCompatActivity {
         Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
         com.example.outdoordirections.model.Quaternion qc = new com.example.outdoordirections.model.Quaternion(q);
         Vector3 n = qc.normal();
-        Point np = new Point(n.x, n.z);
+        Point normalPoint = new Point(n.x, n.z);
+
+        int ni =0;
 
         if (utmCurrent!=null){
-            viewPoint = utmCurrent.add(np.mulScalar(2.0));
+            viewPoint = utmCurrent.add(normalPoint.mulScalar(2.0));
+            while (true){
+                ni = route.findNear(viewPoint);
+                Point np = route.getPoints().get(ni);
+                if (np.distance(viewPoint)<1.0){
+                    if (!route.finish(ni)){
+                        ni = route.next(ni);
+                    }else{
+                        // route has finished
+                        if(oldNode!=null){
+                            arCam.getArSceneView().getScene().removeChild(oldNode);
+                        }
+                    }
+                }else{
+                    break;
+                }
+            }
+
+            Point difNormal = viewPoint.sub(route.getPoints().get(ni)).normalize();
+            Point down = new Point(0,0);
+            down.setZ(-1);
+            com.example.outdoordirections.model.Quaternion qr = new com.example.outdoordirections.model.Quaternion(new Quaternion());
+            qr.setFrom2Vec(down, difNormal);
+            model.setLocalRotation(qr.getQuaternion());
         }
 
-        //model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
     }
 
     private void addNode(ModelRenderable modelRenderable) {
