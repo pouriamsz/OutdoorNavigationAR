@@ -1,6 +1,15 @@
 package com.example.outdoordirections.model;
 
-public class Point {
+import org.json.JSONException;
+import org.osmdroid.util.GeoPoint;
+
+import java.io.IOException;
+import java.io.Serializable;
+
+import uk.me.jstott.jcoord.LatLng;
+import uk.me.jstott.jcoord.OSRef;
+
+public class Point implements Serializable {
     double x;
     double y;
     double z;
@@ -24,5 +33,15 @@ public class Point {
 
     public double getZ() {
         return z;
+    }
+
+    public void convert2utm(GeoPoint pnt) {
+        LatLng gp = new LatLng(pnt.getLatitude(), pnt.getLongitude());
+        OSRef osRef = gp.toOSRef();
+        double easting = osRef.getEasting();
+        double northing = osRef.getNorthing();
+
+        this.x = easting;
+        this.y = northing;
     }
 }

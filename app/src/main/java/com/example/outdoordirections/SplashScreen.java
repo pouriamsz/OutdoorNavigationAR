@@ -7,10 +7,8 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +33,7 @@ public class SplashScreen extends AppCompatActivity {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                startActivity(new Intent(SplashScreen.this, MainActivity.class));
+                startActivity(new Intent(SplashScreen.this, MapActivity.class));
                 finish();
                 overridePendingTransition(R.anim.slide_in_left,R.anim.slide_out_left);
             }

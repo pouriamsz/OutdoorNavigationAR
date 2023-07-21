@@ -8,4 +8,16 @@ public class Route {
     public Route(ArrayList<Point> points){
         this.points = points;
     }
+
+    public void setPoints(ArrayList<Point> points) {
+        this.points = points;
+    }
+
+    public ArrayList<Point> getPoints() {
+        return this.points;
+    }
+
+    public int size(){
+        return this.points.size();
+    }
 }

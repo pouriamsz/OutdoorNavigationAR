@@ -5,8 +5,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.preference.PreferenceManager;
 
-import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -15,18 +13,14 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Parcelable;
 import android.os.StrictMode;
 import android.provider.Settings;
-import android.util.DisplayMetrics;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -35,18 +29,6 @@ import android.widget.Toast;
 import com.example.outdoordirections.model.API;
 import com.example.outdoordirections.model.Point;
 import com.example.outdoordirections.model.Route;
-import com.google.ar.sceneform.Camera;
-import com.google.ar.sceneform.FrameTime;
-import com.google.ar.sceneform.Node;
-import com.google.ar.sceneform.Scene;
-import com.google.ar.sceneform.collision.Ray;
-import com.google.ar.sceneform.math.Vector3;
-import com.google.ar.sceneform.rendering.MaterialFactory;
-import com.google.ar.sceneform.rendering.ModelRenderable;
-import com.google.ar.sceneform.rendering.ShapeFactory;
-import com.google.ar.sceneform.rendering.Texture;
-import com.google.ar.sceneform.ux.ArFragment;
-import com.google.ar.sceneform.ux.TransformableNode;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -67,15 +49,14 @@ import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Objects;
+import java.util.List;
 
 import okhttp3.Response;
-import uk.me.jstott.jcoord.LatLng;
-import uk.me.jstott.jcoord.OSRef;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MapActivity extends AppCompatActivity {
 
 
     // UI variables
@@ -101,44 +82,15 @@ public class MainActivity extends AppCompatActivity {
 
     // current location
     GeoPoint currentLocation;
-    Point utmCurrent;
+    Point utmCurrent = new Point(0, 0);
     GeoPoint destination;
-    Point utmDestination;
+    Point utmDestination = new Point(0, 0);
     boolean isCurrent = false;
 
     // Route
     Route route;
     Polyline pathLine;
 
-    // AR variables
-    private ArFragment arCam;
-    private Node oldNode = null;
-    TransformableNode model;
-    private int deviceHeight, deviceWidth;
-    private Node node = new Node();
-    private int count = 0;
-
-    public static boolean checkSystemSupport(Activity activity) {
-
-        // checking whether the API version of the running Android >= 24
-        // that means Android Nougat 7.0
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            String openGlVersion = ((ActivityManager) Objects.requireNonNull(activity.getSystemService(Context.ACTIVITY_SERVICE))).getDeviceConfigurationInfo().getGlEsVersion();
-
-            // checking whether the OpenGL version >= 3.0
-            if (Double.parseDouble(openGlVersion) >= 3.0) {
-                return true;
-            } else {
-                Toast.makeText(activity, "App needs OpenGl Version 3.0 or later", Toast.LENGTH_SHORT).show();
-                activity.finish();
-                return false;
-            }
-        } else {
-            Toast.makeText(activity, "App does not support required Build Version", Toast.LENGTH_SHORT).show();
-            activity.finish();
-            return false;
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,22 +101,11 @@ public class MainActivity extends AppCompatActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-
-        // Device size
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        deviceHeight = displayMetrics.heightPixels;
-        deviceWidth = displayMetrics.widthPixels;
-
-
         // initialize UI variables
         getLocation = (ImageButton) findViewById(R.id.btnLocation);
         directionBtn = findViewById(R.id.btnDirection);
         openCamera = findViewById(R.id.btnCamera);
         osm = findViewById(R.id.mapview);
-        // Change map view size
-//        RelativeLayout.LayoutParams mapViewParams = new RelativeLayout.LayoutParams(deviceWidth, deviceHeight/2);
-//        osm.setLayoutParams(mapViewParams);
 
 
         // AR Camera Button
@@ -172,67 +113,20 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                if (checkSystemSupport(MainActivity.this)) {
-
-                    if (oldNode==null){
-                        Texture.Sampler sampler = Texture.Sampler.builder()
-                                .setMinFilter(Texture.Sampler.MinFilter.LINEAR_MIPMAP_LINEAR)
-                                .setMagFilter(Texture.Sampler.MagFilter.LINEAR)
-                                .build();
-
-                        Texture.builder()
-                                .setSource(() -> getApplicationContext().getAssets().open("arrow_texture.png"))
-                                .setSampler(sampler)
-                                .build().thenAccept(texture -> {
-                            MaterialFactory.makeTransparentWithTexture(getApplicationContext(), texture) //new Color(0, 255, 244))
-                                    .thenAccept(
-                                            material -> {
-
-                                                // TODO: z is the length
-                                                ModelRenderable model = ShapeFactory.makeCube(
-                                                        new Vector3(.3f, .006f, 0.5f),
-                                                        Vector3.zero(), material);
-
-
-                                                addNode(model);
-
-                                            }
-                                    );
-                        }).exceptionally(throwable -> {
-                            Toast.makeText(MainActivity.this, "error:"+throwable.getCause(), Toast.LENGTH_SHORT).show();
-                            return null;
-                        });
-
-//                        ModelRenderable.builder()
-//                                .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
-//                                .setIsFilamentGltf(true)
-//                                .build()
-//                                .thenAccept(modelRenderable -> addNode(modelRenderable))
-//                                .exceptionally(throwable -> {
-//                                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-//                                    builder.setMessage("Something is not right" + throwable.getMessage()).show();
-//                                    return null;
-//                                });
-                    }
-
-
-                    // ArFragment is linked up with its respective id used in the activity_main.xml
-                    arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
-                    arCam.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
+                // TODO
+                if (route.size() > 0){
+                    new Handler().postDelayed(new Runnable() {
                         @Override
-                        public void onUpdate(FrameTime frameTime) {
-                            // TODO: ?
-//                            arCam.onUpdate(frameTime);
-                            if(oldNode!=null){
-                                if (count%10==0){
-                                    updateNode();
-                                }
-                                count++;
-                            }
+                        public void run() {
+                            ArrayList<Point> points = new ArrayList<>();
+                            points = route.getPoints();
+                            Intent intent = new Intent(MapActivity.this, ARActivity.class);
+                            intent.putExtra("route", points);
+                            startActivity(intent);
+                            finish();
+                            overridePendingTransition(R.anim.slide_in_left,R.anim.slide_out_left);
                         }
-                    });
-                } else {
-                    return;
+                    },600);
                 }
 
             }
@@ -271,7 +165,8 @@ public class MainActivity extends AppCompatActivity {
                         );
 
 
-                        Point utmPoint = convert2utm(pathPoint);
+                        Point utmPoint = new Point(0.0, 0.0);
+                        utmPoint.convert2utm(pathPoint);
 
                         pathUtm.add(utmPoint);
 
@@ -288,7 +183,6 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
 
-
             }
         });
 
@@ -297,13 +191,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
                 destination = p;
-                try {
-                    utmDestination = convert2utm(destination);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+                utmDestination.convert2utm(destination);
 
                 addMarkerLocation(p);
                 return false;
@@ -357,49 +245,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private Point convert2utm(GeoPoint pnt) throws IOException, JSONException {
-        LatLng gp = new LatLng(pnt.getLatitude(), pnt.getLongitude());
-        OSRef osRef = gp.toOSRef();
-        double easting = osRef.getEasting();
-        double northing = osRef.getNorthing();
-
-        return new Point(easting, northing);
-    }
-
-    private void updateNode() {
-
-        Camera camera = arCam.getArSceneView().getScene().getCamera();
-        // TODO: Cast ray to center of screen
-        Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
-
-        // TODO: This distance is so important, find a way to calculate that
-        // Maybe a large number could be good at this point
-        model.setLocalPosition(ray.getPoint(2f));
-        // TODO: Quaternion
-        //model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
-
-    }
-
-    private void addNode(ModelRenderable modelRenderable) {
-        // Remove old object
-        if(oldNode!=null){
-            arCam.getArSceneView().getScene().removeChild(oldNode);
-        }
-        node.setParent(arCam.getArSceneView().getScene());
-        Camera camera = arCam.getArSceneView().getScene().getCamera();
-        // TODO: Cast ray to center of screen
-        Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
-
-        model = new TransformableNode(arCam.getTransformationSystem());
-        model.setParent(node);
-        model.setRenderable(modelRenderable);
-        model.setLocalPosition(ray.getPoint(1f));
-        // model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
-
-        oldNode = node;
-        arCam.getArSceneView().getScene().addChild(node);
-
-    }
 
     @Override
     public void onPause() {
@@ -446,13 +291,7 @@ public class MainActivity extends AppCompatActivity {
                 // get current location
                 currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
 
-                try {
-                    utmCurrent = convert2utm(currentLocation);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+                utmCurrent.convert2utm(currentLocation);
 
                 // animate and update marker
                 try {
@@ -481,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onProviderDisabled(@NonNull String provider) {
             showGPSDialog = false;
-            Toast.makeText(MainActivity.this, "Please Enable GPS", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MapActivity.this, "Please Enable GPS", Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -24,7 +24,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.OutdoorDirections">
         <activity
-            android:name=".MainActivity"
+            android:name=".ARActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MapActivity"
             android:exported="false" />
         <activity
             android:name=".SplashScreen"
