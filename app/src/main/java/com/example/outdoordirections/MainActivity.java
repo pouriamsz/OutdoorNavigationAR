@@ -162,6 +162,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
+        // TODO: Remove sensor
         //sensor manager & sensor required to calculate yaw
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
@@ -387,7 +388,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
 
         model.setLocalPosition(ray.getPoint(1f));
-        // model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
+        model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
 
     }
 
