@@ -78,6 +78,8 @@ import java.util.Objects;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import uk.me.jstott.jcoord.LatLng;
+import uk.me.jstott.jcoord.OSRef;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -363,24 +365,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Point convert2utm(GeoPoint pnt) throws IOException, JSONException {
-        // Convert to UTM API
-        String convert2UTMUrl = "https://geodesy.noaa.gov/api/ncat/llh?" +
-                "lat="+pnt.getLatitude()+
-                "&lon="+pnt.getLongitude()+
-                "&a=6378160.0&invf=298.25";
+        LatLng gp = new LatLng(pnt.getLatitude(), pnt.getLongitude());
+        OSRef osRef = gp.toOSRef();
+        double easting = osRef.getEasting();
+        double northing = osRef.getNorthing();
 
-        API convertAPI = new API(convert2UTMUrl, "GET");
-        convertAPI.sendRequest();
-        Response convertRes = convertAPI.getResponse();
-        String convertJsonData = convertRes.body().string();
-
-        // Parse convert response
-        JSONObject convertJsonObject = new JSONObject(convertJsonData);
-
-        double east = convertJsonObject.getDouble("utmEasting");
-        double north = convertJsonObject.getDouble("utmNorthing");
-
-        return new Point(east, north);
+        return new Point(easting, northing);
     }
 
     private void updateNode() {
@@ -658,9 +648,6 @@ public class MainActivity extends AppCompatActivity {
         int internetPrms = ContextCompat.checkSelfPermission(this, android.Manifest.permission.INTERNET);
         int networkStat = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_NETWORK_STATE);
         int wifiStat = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE);
-        int cameraStat = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
-
-
 
         List<String> listPermission = new ArrayList<>();
         if (fineLocPrms != PackageManager.PERMISSION_GRANTED) {
@@ -680,9 +667,6 @@ public class MainActivity extends AppCompatActivity {
         }
         if (wifiStat != PackageManager.PERMISSION_GRANTED) {
             listPermission.add(Manifest.permission.ACCESS_WIFI_STATE);
-        }
-        if (cameraStat != PackageManager.PERMISSION_GRANTED) {
-            listPermission.add(Manifest.permission.CAMERA);
         }
         if (!listPermission.isEmpty()) {
             ActivityCompat.requestPermissions(this, listPermission.toArray(new String[listPermission.size()]), 1);
