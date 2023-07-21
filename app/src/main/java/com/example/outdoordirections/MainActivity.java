@@ -15,6 +15,10 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -70,7 +74,7 @@ import uk.me.jstott.jcoord.LatLng;
 import uk.me.jstott.jcoord.OSRef;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
 
     // UI variables
@@ -115,6 +119,18 @@ public class MainActivity extends AppCompatActivity {
     private Node node = new Node();
     private int count = 0;
 
+    // Sensor variables
+    private float Rot[] = null; //for gravity rotational data
+    private float I[] = null; //for magnetic rotational data
+    private float accels[] = new float[3];
+    private float mags[] = new float[3];
+    private float[] values = new float[3];
+    private float yaw;
+    private float pitch;
+    private float roll;
+    private SensorManager sensorManager;
+    private Sensor sensor;
+
     public static boolean checkSystemSupport(Activity activity) {
 
         // checking whether the API version of the running Android >= 24
@@ -146,6 +162,9 @@ public class MainActivity extends AppCompatActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
+        //sensor manager & sensor required to calculate yaw
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
 
         // Device size
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -399,6 +418,15 @@ public class MainActivity extends AppCompatActivity {
         // TODO: Should be tested this line
         // locationManager.removeUpdates(locationListener);
         osm.onPause();
+
+        // Sensor
+        sensorManager.unregisterListener(this);
+
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
     }
 
     @Override
@@ -407,6 +435,18 @@ public class MainActivity extends AppCompatActivity {
         getMyLocation();
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
         osm.onResume();
+
+        // Sensor
+        Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        if (accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer,
+                    SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
+        }
+        Sensor magneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        if (magneticField != null) {
+            sensorManager.registerListener(this, magneticField,
+                    SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
+        }
     }
 
     @Override
@@ -416,6 +456,48 @@ public class MainActivity extends AppCompatActivity {
             // stop request gps location
             locationManager.removeUpdates(locationListener);
         }
+    }
+
+    // Sensor
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        switch (sensorEvent.sensor.getType())
+        {
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                mags = sensorEvent.values.clone();
+                break;
+            case Sensor.TYPE_ACCELEROMETER:
+                accels = sensorEvent.values.clone();
+                break;
+        }
+
+        if (mags != null && accels != null) {
+            Rot = new float[9];
+            I= new float[9];
+            SensorManager.getRotationMatrix(Rot, I, accels, mags);
+
+            // Correct if screen is in Landscape
+            float[] outR = new float[9];
+            SensorManager.remapCoordinateSystem(Rot, SensorManager.AXIS_X,SensorManager.AXIS_Z, outR);
+            SensorManager.getOrientation(outR, values);
+
+            // here we calculated the final yaw(azimuth), roll & pitch of the device.
+            // multiplied by a global standard value to get accurate results
+
+            // this is the yaw or the azimuth we need
+            yaw = values[0] * 57.2957795f;
+            pitch =values[1] * 57.2957795f;
+            roll = values[2] * 57.2957795f;
+
+            //retrigger the loop when things are repopulated
+            mags = null;
+            accels = null;
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
     }
 
     // LocationListener class
