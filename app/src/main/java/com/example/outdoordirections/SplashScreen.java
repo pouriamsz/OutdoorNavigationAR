@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,13 @@ public class SplashScreen extends AppCompatActivity {
 
         this.getSupportActionBar().hide();
 
-        checkLocationPermissions();
+        boolean checkList = checkLocationPermissions();
+        int delay;
+        if (checkList){
+            delay = 5000;
+        }else{
+            delay = 1200;
+        }
 
         new Handler().postDelayed(new Runnable() {
             @Override
@@ -32,14 +39,13 @@ public class SplashScreen extends AppCompatActivity {
                 finish();
                 overridePendingTransition(R.anim.slide_in_left,R.anim.slide_out_left);
             }
-        },5000);
+        },delay);
     }
 
     // get permissions
     private boolean checkLocationPermissions() {
         int fineLocPrms = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION);
         int coarseLocPrms = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION);
-        int writeExtrnalStrg = ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
         int internetPrms = ContextCompat.checkSelfPermission(this, android.Manifest.permission.INTERNET);
         int networkStat = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_NETWORK_STATE);
         int wifiStat = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE);
@@ -50,9 +56,6 @@ public class SplashScreen extends AppCompatActivity {
         }
         if (coarseLocPrms != PackageManager.PERMISSION_GRANTED) {
             listPermission.add(android.Manifest.permission.ACCESS_COARSE_LOCATION);
-        }
-        if (writeExtrnalStrg != PackageManager.PERMISSION_GRANTED) {
-            listPermission.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
         if (networkStat != PackageManager.PERMISSION_GRANTED) {
             listPermission.add(android.Manifest.permission.ACCESS_NETWORK_STATE);
@@ -68,6 +71,6 @@ public class SplashScreen extends AppCompatActivity {
         }
 
 
-        return true;
+        return listPermission.size()>0;
     }
 }
