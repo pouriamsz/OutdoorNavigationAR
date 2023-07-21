@@ -17,6 +17,7 @@ public class Point implements Serializable {
     public Point(double x, double y) {
         this.x = x;
         this.y = y;
+        this.z = 0.0;
     }
 
     public void setZ(double z) {
@@ -59,5 +60,41 @@ public class Point implements Serializable {
         pc.y = pc.y*s;
 
         return pc;
+    }
+
+    public double distance(Point p){
+        return Math.sqrt((this.x-p.x)*(this.x-p.x)+(this.y-p.y)*(this.y-p.y));
+    }
+
+    public Point sub(Point p){
+        Point pc = new Point(this.x, this.y);
+        pc.x = p.x-pc.x;
+        pc.y = p.y-pc.y;
+
+        return new Point(pc.x, pc.y);
+    }
+
+    public Point normalize(){
+        Point pc = new Point(this.x, this.y);
+        double k = pc.norm();
+        pc.x /= k;
+        pc.y /= k;
+
+        return pc;
+    }
+
+    public double norm(){
+        return Math.sqrt(this.norm2());
+    }
+
+    public double norm2(){
+        return this.x*this.x +
+                this.y*this.y +
+                this.z*this.z;
+
+    }
+
+    public double dot(Point p1){
+        return (this.x*p1.x)+(this.y*p1.y);
     }
 }
