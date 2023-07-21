@@ -114,20 +114,19 @@ public class MapActivity extends AppCompatActivity {
             public void onClick(View view) {
 
                 // TODO
-//                if (route != null && route.size()>0){
+                if (route != null && route.size()>0){
                     new Handler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
-//                            ArrayList<Point> points = new ArrayList<>();
-//                            points = route.getPoints();
+                            ArrayList<Point> points = route.getPoints();
                             Intent intent = new Intent(MapActivity.this, ARActivity.class);
-//                            intent.putExtra("route", points);
+                            intent.putExtra("route", points);
                             startActivity(intent);
                             finish();
                             overridePendingTransition(R.anim.slide_in_left,R.anim.slide_out_left);
                         }
                     },600);
-//                }
+                }
 
             }
         });
