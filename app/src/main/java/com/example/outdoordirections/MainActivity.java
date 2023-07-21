@@ -205,9 +205,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                     .thenAccept(
                                             material -> {
 
-                                                // TODO:
+                                                // TODO: z is the length
                                                 ModelRenderable model = ShapeFactory.makeCube(
-                                                        new Vector3(.3f, .006f, 1.0f),
+                                                        new Vector3(.3f, .006f, 0.5f),
                                                         Vector3.zero(), material);
 
 
@@ -387,8 +387,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // TODO: Cast ray to center of screen
         Ray ray = camera.screenPointToRay(deviceWidth/2, 500);
 
-        model.setLocalPosition(ray.getPoint(1f));
-        model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
+        // TODO: This distance is so important, find a way to calculate that
+        // Maybe a large number could be good at this point
+        model.setLocalPosition(ray.getPoint(2f));
+        // TODO: Quaternion
+        //model.setLocalRotation(arCam.getArSceneView().getScene().getCamera().getLocalRotation());
 
     }
 
