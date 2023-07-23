@@ -70,6 +70,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
     // Route
     Route route = new Route(new ArrayList<Point>());
+    int ni;
 
     // AR variables
     private ArFragment arCam;
@@ -77,8 +78,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     TransformableNode model;
     private int deviceHeight, deviceWidth;
     private int count = 0;
-
-    int ni;
+    private Scene.OnUpdateListener sceneUpdate;
 
 
     // Sensor
@@ -172,19 +172,20 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 },5000);
             }
 
-            arCam.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
+            sceneUpdate = new Scene.OnUpdateListener() {
                 @Override
                 public void onUpdate(FrameTime frameTime) {
                     // TODO: ?
                     // arCam.onUpdate(frameTime);
                     if(oldNode!=null){
 //                        if (count%100==0){
-                            updateNode();
+                        updateNode();
 //                        }
 //                        count++;
                     }
                 }
-            });
+            };
+            arCam.getArSceneView().getScene().addOnUpdateListener(sceneUpdate);
         } else {
             return;
         }
@@ -213,6 +214,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
 
                                 addNode(model);
+                                arCam.getArSceneView().getScene().removeOnUpdateListener(sceneUpdate);
 
                             }
                     );
@@ -220,18 +222,6 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             Toast.makeText(this, "error:"+throwable.getCause(), Toast.LENGTH_SHORT).show();
             return null;
         });
-
-        /* How load gltf and glb?
-        ModelRenderable.builder()
-                                .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
-                                .setIsFilamentGltf(true)
-                                .build()
-                                .thenAccept(modelRenderable -> addNode(modelRenderable))
-                                .exceptionally(throwable -> {
-                                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                                    builder.setMessage("Something is not right" + throwable.getMessage()).show();
-                                    return null;
-                                }); */
     }
 
     private void loadRouteModel() {
@@ -285,7 +275,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
         Vector3 rp = ray.getPoint(2f);
         model.setWorldPosition(rp);
-        // Rotate model from view point of camera to current
+        // Rotate model from view point to current location
         Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
         com.example.outdoordirections.model.Quaternion qc = new com.example.outdoordirections.model.Quaternion(q);
         Vector3 normal = qc.normal();
@@ -312,48 +302,28 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                         route.getPoints().get(ni).getY(),
                         0.0);
             }
-            // TODO: reverse it
+            // Rotate from view to destination
             final Vertex diffFromViewToCurrent = vertexCurrent.sub(viewPoint);
             final Vertex directionFromViewToCurrent = diffFromViewToCurrent.normalize();
             double alpha = Math.atan2(directionFromViewToCurrent.getY(), directionFromViewToCurrent.getX());
 
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
-//            if (difference.length()<0.5){
-//                loadDestinationModel();
-//            }else{
+            // View point is on destination, put marker
+            if (diffFromViewToNext.length()<0.5){
+                loadDestinationModel();
+            }else{
                 final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
-            double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
+                double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
 
-            double rotationDegree = beta - alpha;
+                double rotationDegree = beta - alpha;
 
-//                if (initYaw>0 && initYaw<90){
-//                    rotationDegree = 90 + rotationDegree ;
-//                }else if (initYaw>90 && initYaw<180){
-//                    rotationDegree = 90 - rotationDegree ;
-//                }else if (initYaw<0 && initYaw>-90){
-//                    rotationDegree = 180 + rotationDegree ;
-//                }else if (initYaw<-90 && initYaw>-180){
-//                        // do nothing
-//                }
-
-            final Quaternion lookFromViewToNext =
+                final Quaternion lookFromViewToNext =
                     Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree));
 
 
             model.setWorldRotation(lookFromViewToNext);
 
-//                model.setWorldRotation(rotationFromAToB);
-
-
-
-                test.setText(
-                        "view = "+ viewPoint.getX()+", "+ viewPoint.getY()+"\n"+
-                        "next = "+nextPnt.getX() +", "+nextPnt.getY()+"\n"+
-                        "yaw ="+ yaw +"\n"+
-                        "init yaw = "+ initYaw+"\n"+
-                        "rotation = "+ Math.toDegrees(rotationDegree) +"\n"
-                        );
-//            }
+            }
 
 
 //            if (nextPnt.distance(viewPoint)<=prevPnt.distance(viewPoint)){
@@ -401,12 +371,6 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         model.setParent(node);
         model.setRenderable(modelRenderable);
         model.setLocalPosition(ray.getPoint(2f));
-        final Quaternion initRoatation =
-                Quaternion.axisAngle(Vector3.up(), yaw);
-        initYaw = yaw;
-//         model.setWorldRotation(initRoatation);
-        model.setWorldRotation(arCam.getArSceneView().getScene().getCamera().getWorldRotation());
-
 
         oldNode = node;
         arCam.getArSceneView().getScene().addChild(oldNode);
