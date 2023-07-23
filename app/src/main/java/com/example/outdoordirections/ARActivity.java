@@ -287,7 +287,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             vertexCurrent.setX(prevCurrent.getX());
             vertexCurrent.setY(prevCurrent.getY());
 
-            viewPoint = vertexCurrent.add(new Vertex(Math.cos(Math.toRadians(yaw)), -Math.sin(Math.toRadians(yaw)), 0));
+            viewPoint = vertexCurrent.add(new Vertex(Math.sin(Math.toRadians(yaw)), Math.cos(Math.toRadians(yaw)), 0));
+
 
             Vertex nextPnt = new Vertex(route.getPoints().get(ni).getX(),
                     route.getPoints().get(ni).getY(),
