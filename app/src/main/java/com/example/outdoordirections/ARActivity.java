@@ -167,7 +167,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        loadRouteModel();
+                        loadRouteModel(0.5);
                     }
                 },5000);
             }
@@ -224,7 +224,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         });
     }
 
-    private void loadRouteModel() {
+    private void loadRouteModel(double distance) {
         Texture.Sampler sampler = Texture.Sampler.builder()
                 .setMinFilter(Texture.Sampler.MinFilter.LINEAR_MIPMAP_LINEAR)
                 .setMagFilter(Texture.Sampler.MagFilter.LINEAR)
@@ -240,7 +240,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
                                 // TODO: z is the length
                                 ModelRenderable model = ShapeFactory.makeCube(
-                                        new Vector3(.3f, .006f, 0.5f),
+                                        new Vector3(.3f, .006f, (float)distance),
                                         Vector3.zero(), material);
 
 
@@ -309,47 +309,33 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             double alpha = Math.atan2(directionFromViewToCurrent.getY(), directionFromViewToCurrent.getX());
 
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
-            // View point is on destination, put marker
-            if (diffFromViewToNext.length()<0.5){
-                loadDestinationModel();
-            }else{
-                final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
-                double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
 
-                double rotationDegree = beta - alpha;
+            loadRouteModel(diffFromViewToNext.length());
 
-                final Quaternion lookFromViewToNext =
+            final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
+            double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
+
+            double rotationDegree = beta - alpha;
+
+            final Quaternion lookFromViewToNext =
                     Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree));
 
 
             model.setWorldRotation(lookFromViewToNext);
 
+            if (nextPnt.distance(viewPoint)<=prevPnt.distance(viewPoint)){
+                if (!route.finish(ni)){
+                    prevCurrent.setX(route.getPoints().get(ni).getX());
+                    prevCurrent.setY(route.getPoints().get(ni).getY());
+
+                    ni = route.next(ni);
+                }else{
+                    // View point is on destination, put marker
+                    if (diffFromViewToNext.length()<0.5){
+                        loadDestinationModel();
+                    }
+                }
             }
-
-
-//            if (nextPnt.distance(viewPoint)<=prevPnt.distance(viewPoint)){
-//                if (!route.finish(ni)){
-//                    prevCurrent.setX(route.getPoints().get(ni).getX());
-//                    prevCurrent.setY(route.getPoints().get(ni).getY());
-//
-//                    ni = route.next(ni);
-//                }else{
-//                    // route has finished
-////                    if(oldNode!=null){
-////                        arCam.getArSceneView().getScene().removeChild(oldNode);
-////                    }
-//                }
-//            }
-
-
-//            Point tmp = route.getPoints().get(ni);
-//            Vertex difNormal = viewPoint.sub(new Vertex(tmp.getX(), tmp.getY(), 0.0)).normalize();
-//            final Vector3 directionFromTopToBottomV1 = new Vector3((float)difNormal.getX(),
-//                    (float)difNormal.getY(),
-//                    (float)difNormal.getZ());
-//            final Quaternion rotationFromAToB1 =
-//                    Quaternion.lookRotation(directionFromTopToBottomV1, Vector3.up());
-//            model.setLocalRotation(rotationFromAToB1);
 
         }
 
