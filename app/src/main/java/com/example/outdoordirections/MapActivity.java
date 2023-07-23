@@ -18,7 +18,6 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Parcelable;
 import android.os.StrictMode;
 import android.provider.Settings;
 import android.view.View;
@@ -49,9 +48,7 @@ import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
 
 import okhttp3.Response;
 
@@ -82,9 +79,9 @@ public class MapActivity extends AppCompatActivity {
 
     // current location
     GeoPoint currentLocation;
-    Point utmCurrent = new Point(0, 0);
+    Point utmCurrent = new Point(0, 0, 0, 0);
     GeoPoint destination;
-    Point utmDestination = new Point(0, 0);
+    Point utmDestination = new Point(0, 0,0,0);
     boolean isCurrent = false;
 
     // Route
@@ -114,19 +111,19 @@ public class MapActivity extends AppCompatActivity {
             public void onClick(View view) {
 
                 // TODO
-                if (route != null && route.size()>0){
+//                if (route != null && route.size()>0){
                     new Handler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                            ArrayList<Point> points = route.getPoints();
+//                            ArrayList<Point> points = route.getPoints();
                             Intent intent = new Intent(MapActivity.this, ARActivity.class);
-                            intent.putExtra("route", points);
+//                            intent.putExtra("route", points);
                             startActivity(intent);
                             finish();
                             overridePendingTransition(R.anim.slide_in_left,R.anim.slide_out_left);
                         }
                     },600);
-                }
+//                }
 
             }
         });
@@ -165,8 +162,8 @@ public class MapActivity extends AppCompatActivity {
                             );
 
 
-                            Point utmPoint = new Point(0.0, 0.0);
-                            utmPoint.convert2utm(pathPoint);
+                            Point utmPoint = new Point(0.0, 0.0, pathPoint.getLatitude(), pathPoint.getLongitude());
+                            utmPoint.convert2utm();
 
                             pathUtm.add(utmPoint);
 
@@ -191,8 +188,10 @@ public class MapActivity extends AppCompatActivity {
         osm.getOverlays().add(new MapEventsOverlay(new MapEventsReceiver() {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
+                utmDestination.setLat(p.getLatitude());
+                utmDestination.setLon(p.getLongitude());
                 destination = p;
-                utmDestination.convert2utm(destination);
+                utmDestination.convert2utm();
 
                 addMarkerLocation(p);
                 return false;
@@ -291,8 +290,9 @@ public class MapActivity extends AppCompatActivity {
 
                 // get current location
                 currentLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-
-                utmCurrent.convert2utm(currentLocation);
+                utmCurrent.setLat(currentLocation.getLatitude());
+                utmCurrent.setLon(currentLocation.getLongitude());
+                utmCurrent.convert2utm();
 
                 // animate and update marker
                 try {

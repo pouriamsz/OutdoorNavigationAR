@@ -3,29 +3,33 @@ package com.example.outdoordirections.model;
 import java.util.ArrayList;
 
 public class Route {
-    ArrayList<Point> points;
+    ArrayList<Point> vertices;
 
-    public Route(ArrayList<Point> points){
-        this.points = points;
+    public Route(ArrayList<Point> vertices){
+        this.vertices = vertices;
     }
 
-    public void setPoints(ArrayList<Point> points) {
-        this.points = points;
+    public void setPoints(ArrayList<Point> vertices) {
+        this.vertices = vertices;
+    }
+
+    public void addPoint(Point p){
+        this.vertices.add(p);
     }
 
     public ArrayList<Point> getPoints() {
-        return this.points;
+        return this.vertices;
     }
 
     public int size(){
-        return this.points.size();
+        return this.vertices.size();
     }
 
     public int findNear(Point p){
         int minIndex = 0;
-        double minValue = points.get(0).distance(p);
-        for (int i = 1; i < points.size() ; i++) {
-            double d = points.get(i).distance(p);
+        double minValue = vertices.get(0).distance(p);
+        for (int i = 1; i < vertices.size() ; i++) {
+            double d = vertices.get(i).distance(p);
             if (d<minValue){
                 minValue = d;
                 minIndex = i;
@@ -40,7 +44,7 @@ public class Route {
     }
 
     public boolean finish(int i){
-        if (i+1 >= points.size()){
+        if (i+1 >= vertices.size()){
             return true;
         }
 

@@ -56,33 +56,5 @@ public class Quaternion {
 
     }
 
-    public Quaternion setFrom2Vec(Point p1, Point p2){
-        p1 = p1.normalize();
-        p2 = p2.normalize();
-
-        double r = p1.dot(p2)+1;
-
-        if (r < 0.00001) {
-            r = 0;
-            if (Math.abs(p1.x) > Math.abs(p1.z)) {
-                this.quaternion.x = (float)(-p1.y);
-                this.quaternion.y = (float)(p1.x);
-                this.quaternion.z = 0.0f;
-                this.quaternion.w = (float)r;
-            }else{
-                this.quaternion.x = 0.0f;
-                this.quaternion.y = (float)(-p1.z);
-                this.quaternion.z = (float)p1.y;
-                this.quaternion.w = (float)r;
-            }
-        }else{
-            this.quaternion.x = (float)(p1.y*p2.z - p1.z*p2.y);
-            this.quaternion.y = (float)(p1.z*p2.x - p1.x*p2.z);
-            this.quaternion.z = (float)(p1.x*p2.y - p1.y*p2.x);
-            this.quaternion.w = (float)r;
-        }
-
-        return this.unit();
-    }
 
 }
