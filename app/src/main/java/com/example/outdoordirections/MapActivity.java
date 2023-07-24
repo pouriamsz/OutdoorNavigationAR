@@ -147,34 +147,38 @@ public class MapActivity extends AppCompatActivity {
                     try {
                         directionApi.sendRequest();
                         Response response = directionApi.getResponse();
-                        String jsonData = response.body().string();
-                        JSONObject jsonObject = new JSONObject(jsonData);
-                        JSONArray features = jsonObject.getJSONArray("features");
-                        JSONObject geometry = features.getJSONObject(0).getJSONObject("geometry");
-                        JSONArray pathCoordinates = geometry.getJSONArray("coordinates");
-                        ArrayList<Point> pathUtm = new ArrayList<>();
-                        ArrayList<GeoPoint> pathPoints = new ArrayList<>();
-                        for (int i = 0; i < pathCoordinates.length(); i++) {
-                            JSONArray pathPointJson = pathCoordinates.getJSONArray(i);
-                            GeoPoint pathPoint = new GeoPoint(
-                                    pathPointJson.getDouble(1),
-                                    pathPointJson.getDouble(0)
-                            );
+                        if ( response!=null && response.isSuccessful()){
+                            String jsonData = response.body().string();
+                            JSONObject jsonObject = new JSONObject(jsonData);
+                            JSONArray features = jsonObject.getJSONArray("features");
+                            JSONObject geometry = features.getJSONObject(0).getJSONObject("geometry");
+                            JSONArray pathCoordinates = geometry.getJSONArray("coordinates");
+                            ArrayList<Point> pathUtm = new ArrayList<>();
+                            ArrayList<GeoPoint> pathPoints = new ArrayList<>();
+                            for (int i = 0; i < pathCoordinates.length(); i++) {
+                                JSONArray pathPointJson = pathCoordinates.getJSONArray(i);
+                                GeoPoint pathPoint = new GeoPoint(
+                                        pathPointJson.getDouble(1),
+                                        pathPointJson.getDouble(0)
+                                );
 
 
-                            Point utmPoint = new Point(0.0, 0.0, pathPoint.getLatitude(), pathPoint.getLongitude());
-                            utmPoint.convert2utm();
+                                Point utmPoint = new Point(0.0, 0.0, pathPoint.getLatitude(), pathPoint.getLongitude());
+                                utmPoint.convert2utm();
 
-                            pathUtm.add(utmPoint);
+                                pathUtm.add(utmPoint);
 
-                            pathPoints.add(pathPoint);
+                                pathPoints.add(pathPoint);
 
+                            }
+
+                            route = new Route(pathUtm);
+                            drawCustomPolyline(pathPoints);
+                            // Log.d("response", "============== "+ pathPoints);
+                        }else{
+
+                            Toast.makeText(MapActivity.this, response!=null? response.message():"Something went wrong, please try again", Toast.LENGTH_SHORT).show();
                         }
-
-                        route = new Route(pathUtm);
-                        drawCustomPolyline(pathPoints);
-                        // Log.d("response", "============== "+ pathPoints);
-
 
                     } catch (JSONException | IOException e) {
                         e.printStackTrace();
