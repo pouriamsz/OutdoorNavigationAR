@@ -34,6 +34,7 @@ After launching the OutdoorNavigationAR app, click your desired destination on t
 
 * [osmdroid](https://github.com/osmdroid/osmdroid)
 * [Sceneform](https://github.com/SceneView/sceneform-android)
+* [Openrouteservice](https://github.com/GIScience/openrouteservice)
 
 ##  Test video
 
