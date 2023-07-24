@@ -62,14 +62,10 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     Point utmCurrent = new Point(0,0, 0, 0);
     Vertex vertexCurrent = new Vertex(0,0, 0);
     Vertex viewPoint = new Vertex(0,0, 0);
-    Vertex prevCurrent = new Vertex(0,0, 0);
 
-    //
-    LocalCoordiante localCoordiante;
-    ArrayList<Point> coordinates = new ArrayList<>();
 
     // Route
-    Route route = new Route(new ArrayList<Point>());
+    Route route = new Route(new ArrayList<>());
     int ni;
 
     // AR variables
@@ -87,7 +83,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     private float accels[] = new float[3];
     private float mags[] = new float[3];
     private float[] values = new float[3];
-    private float yaw, initYaw;
+    private float yaw;
+    private ArrayList<Float> yaws = new ArrayList<>();
     private float pitch;
     private float roll;
     private SensorManager sensorManager;
@@ -120,38 +117,34 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_aractivity);
 
-
         //sensor manager & sensor required to calculate yaw
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
 
 
-//        ArrayList<Point> points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
-//        route.setPoints(points);
+                // Get route
+        ArrayList<Point> points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
+        route.setPoints(points);
 
-        route.addPoint(new Point(0,0, 0, 0));
-        route.addPoint(new Point(1,0, 0, 0));
-        route.addPoint(new Point(2,0, 0, 0));
-        route.addPoint(new Point(3,0, 0, 0));
-        route.addPoint(new Point(4,0, 0, 0));
+//        // TO debug
+//        route.addPoint(new Point(0,0, 0, 0));
+//        route.addPoint(new Point(1,0, 0, 0));
+//        route.addPoint(new Point(2,0, 0, 0));
+//        route.addPoint(new Point(3,0, 0, 0));
+//        route.addPoint(new Point(4,0, 0, 0));
 
 
-
-        if (route.size()>2){
+        if (route.size()>1){
             ni = 1;
         }else{
             ni = 0;
         }
 
-        // Log.d("Route", " =======  "+route.size());
 
         test = findViewById(R.id.testText);
         // current location
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         getMyLocation();
-
-
-        localCoordiante = new LocalCoordiante(new Point(0,0,0,0));
 
         // Device size
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -207,7 +200,6 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     .thenAccept(
                             material -> {
 
-                                // TODO: z is the length
                                 ModelRenderable model = ShapeFactory.makeCube(
                                         new Vector3(.3f, .01f, 0.25f),
                                         Vector3.zero(), material);
@@ -238,7 +230,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     .thenAccept(
                             material -> {
 
-                                // TODO: z is the length
+                                // z is the length
                                 ModelRenderable model = ShapeFactory.makeCube(
                                         new Vector3(.3f, .006f, (float)distance),
                                         Vector3.zero(), material);
@@ -284,10 +276,18 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
 
         if (utmCurrent!=null){
-            vertexCurrent.setX(prevCurrent.getX());
-            vertexCurrent.setY(prevCurrent.getY());
+            vertexCurrent.setX(utmCurrent.getX());
+            vertexCurrent.setY(utmCurrent.getY());
 
-            viewPoint = vertexCurrent.add(new Vertex(Math.sin(Math.toRadians(yaw)), Math.cos(Math.toRadians(yaw)), 0));
+            // View point
+            // d = 1, TODO: calculate based on the height?
+            //  O
+            // /|\
+            // / \ __ 1m __
+            int d = 1;
+            viewPoint = vertexCurrent.add(new Vertex(d*Math.sin(Math.toRadians(yaw)),
+                    d*Math.cos(Math.toRadians(yaw)),
+                    0));
 
 
             Vertex nextPnt = new Vertex(route.getPoints().get(ni).getX(),
@@ -304,18 +304,30 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                         0.0);
             }
             // Rotate from view to destination
+            // Direction from view to current == model initial direction
             final Vertex diffFromViewToCurrent = vertexCurrent.sub(viewPoint);
             final Vertex directionFromViewToCurrent = diffFromViewToCurrent.normalize();
             double alpha = Math.atan2(directionFromViewToCurrent.getY(), directionFromViewToCurrent.getX());
 
+            // Direction from view to next point on route
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
 
-            loadRouteModel(diffFromViewToNext.length());
+            // Distance from view to next point
+            loadRouteModel(diffFromViewToNext.length()/10);
 
             final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
             double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
 
-            double rotationDegree = beta - alpha;
+            double rotationDegree;
+            double angleBetweenTwoVector = Math.acos(
+                    directionFromViewToNext.dot(directionFromViewToCurrent)/
+                            (directionFromViewToNext.length()*directionFromViewToCurrent.length())
+            );
+            if (Math.toDegrees(angleBetweenTwoVector)>150){
+                rotationDegree = Math.PI;
+            }else{
+                rotationDegree = beta - alpha;
+            }
 
             final Quaternion lookFromViewToNext =
                     Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree));
@@ -323,20 +335,38 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
             model.setWorldRotation(lookFromViewToNext);
 
-            if (nextPnt.distance(viewPoint)<=prevPnt.distance(viewPoint)){
-                if (!route.finish(ni)){
-                    prevCurrent.setX(route.getPoints().get(ni).getX());
-                    prevCurrent.setY(route.getPoints().get(ni).getY());
+            if (ni!=0){
+                test.setText(
+                        "len route = "+ route.size()+"\n" +
+                                "ni = "+ ni+"\n"+
+                                "current = " + utmCurrent.getX()+", "+ utmCurrent.getY()+"\n"+
+                                "yaw = "+ yaw+"\n"+
+                                "view = " +viewPoint.getX()+", "+viewPoint.getY()+"\n"+
+                                "next = "+nextPnt.getX()+", "+nextPnt.getY()+"\n"+
+                                "directionFromViewToNext = "+ directionFromViewToNext.getX()+", "+
+                                directionFromViewToNext.getY()+"\n"+
+                                " angleBetweenTwoVector = "+Math.toDegrees(angleBetweenTwoVector)+"\n"+
+                                "distance to next point = "+ diffFromViewToNext.length()
 
-                    ni = route.next(ni);
+                );
+                if (!route.finish(ni)){
+                    if (2.5*nextPnt.distance(vertexCurrent)<=prevPnt.distance(vertexCurrent)){
+
+                        ni = route.next(ni);
+                    }
                 }else{
                     // View point is on destination, put marker
-                    if (diffFromViewToNext.length()<0.5){
+                    if (diffFromViewToNext.length()/10<1.5){
                         loadDestinationModel();
                     }
                 }
+            }else{
+                // Route has just one point so
+                // View point is on destination, put marker
+                if (diffFromViewToNext.length()<0.5){
+                    loadDestinationModel();
+                }
             }
-
         }
 
     }
@@ -438,7 +468,37 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             // multiplied by a global standard value to get accurate results
 
             // this is the yaw or the azimuth we need
-            yaw = (float)Math.toDegrees(values[0]) ;
+            if (yaws.size()==0){
+                yaw = (float)Math.toDegrees(values[0]);
+                yaws.add(yaw);
+            }else{
+                yaw = 0;
+                for (int i = 0; i < yaws.size(); i++) {
+                    yaw += yaws.get(i);
+                }
+                yaw = yaw/yaws.size();
+                if (Math.abs(yaw - (float)Math.toDegrees(values[0]) )>20 &&
+                        Math.abs(yaw - (float)Math.toDegrees(values[0]) )<35){
+                    yaws.remove(0);
+                    yaws.add(yaw);
+                    yaw = 0;
+                    for (int i = 0; i < yaws.size(); i++) {
+                        yaw += yaws.get(i);
+                    }
+                    yaw = yaw/yaws.size();
+                }else{
+                    if (yaws.size()>5){
+                        yaws.remove(0);
+                    }
+                    yaws.add((float)Math.toDegrees(values[0]));
+                    yaw = 0;
+                    for (int i = 0; i < yaws.size(); i++) {
+                        yaw += yaws.get(i);
+                    }
+                    yaw /= yaws.size();
+                }
+
+            }
             pitch = (float)Math.toDegrees(values[1]);
             roll = (float)Math.toDegrees(values[2]);
 
