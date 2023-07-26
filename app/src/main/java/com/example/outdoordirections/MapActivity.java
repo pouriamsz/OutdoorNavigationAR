@@ -110,7 +110,6 @@ public class MapActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                // TODO
                 if (route != null && route.size()>0){
                     new Handler().postDelayed(new Runnable() {
                         @Override

@@ -7,6 +7,7 @@ import androidx.preference.PreferenceManager;
 
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
@@ -16,6 +17,7 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -122,16 +124,16 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
 
 
-                // Get route
+        // Get route
         ArrayList<Point> points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
         route.setPoints(points);
 
 //        // TO debug
 //        route.addPoint(new Point(0,0, 0, 0));
-//        route.addPoint(new Point(1,0, 0, 0));
-//        route.addPoint(new Point(2,0, 0, 0));
-//        route.addPoint(new Point(3,0, 0, 0));
-//        route.addPoint(new Point(4,0, 0, 0));
+//        route.addPoint(new Point(5,0, 0, 0));
+//        route.addPoint(new Point(6,0, 0, 0));
+//        route.addPoint(new Point(7,0, 0, 0));
+//        route.addPoint(new Point(8,0, 0, 0));
 
 
         if (route.size()>1){
@@ -160,7 +162,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        loadRouteModel(0.5);
+                        loadRouteModel(0.005);
                     }
                 },5000);
             }
@@ -187,89 +189,43 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
 
     private void loadDestinationModel() {
-        Texture.Sampler sampler = Texture.Sampler.builder()
-                .setMinFilter(Texture.Sampler.MinFilter.LINEAR_MIPMAP_LINEAR)
-                .setMagFilter(Texture.Sampler.MagFilter.LINEAR)
-                .build();
-
-        Texture.builder()
-                .setSource(() -> getApplicationContext().getAssets().open("situm_position_icon.png"))
-                .setSampler(sampler)
-                .build().thenAccept(texture -> {
-            MaterialFactory.makeTransparentWithTexture(getApplicationContext(), texture) //new Color(0, 255, 244))
-                    .thenAccept(
-                            material -> {
-
-                                ModelRenderable model = ShapeFactory.makeCube(
-                                        new Vector3(.3f, .01f, 0.25f),
-                                        Vector3.zero(), material);
-
-
-                                addNode(model);
-                                arCam.getArSceneView().getScene().removeOnUpdateListener(sceneUpdate);
-
-                            }
-                    );
-        }).exceptionally(throwable -> {
-            Toast.makeText(this, "error:"+throwable.getCause(), Toast.LENGTH_SHORT).show();
-            return null;
-        });
+        ModelRenderable.builder()
+                .setSource(ARActivity.this, Uri.parse("arrow_location.glb"))
+                .setIsFilamentGltf(true)
+                .build()
+                .thenAccept(modelRenderable ->{
+                    arCam.getArSceneView().getScene().removeOnUpdateListener(sceneUpdate);
+                    addDestinationNode(modelRenderable);
+                })
+                .exceptionally(throwable -> {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(ARActivity.this);
+                    builder.setMessage("Something is not right" + throwable.getMessage()).show();
+                    return null;
+                });
     }
 
-    private void loadRouteModel(double distance) {
-        Texture.Sampler sampler = Texture.Sampler.builder()
-                .setMinFilter(Texture.Sampler.MinFilter.LINEAR_MIPMAP_LINEAR)
-                .setMagFilter(Texture.Sampler.MagFilter.LINEAR)
-                .build();
-
-        Texture.builder()
-                .setSource(() -> getApplicationContext().getAssets().open("arrow_texture.png"))
-                .setSampler(sampler)
-                .build().thenAccept(texture -> {
-            MaterialFactory.makeTransparentWithTexture(getApplicationContext(), texture) //new Color(0, 255, 244))
-                    .thenAccept(
-                            material -> {
-
-                                // z is the length
-                                ModelRenderable model = ShapeFactory.makeCube(
-                                        new Vector3(.3f, .006f, (float)distance),
-                                        Vector3.zero(), material);
-
-
-                                addNode(model);
-
-                            }
-                    );
-        }).exceptionally(throwable -> {
-            Toast.makeText(this, "error:"+throwable.getCause(), Toast.LENGTH_SHORT).show();
-            return null;
-        });
-
-        /* How load gltf and glb?
+    private void loadRouteModel(double scale) {
         ModelRenderable.builder()
-                                .setSource(MainActivity.this, Uri.parse("gfg_gold_text_stand_2.glb"))
+                                .setSource(ARActivity.this, Uri.parse("red_arrow_chevrons_wayfinding.glb"))
                                 .setIsFilamentGltf(true)
                                 .build()
-                                .thenAccept(modelRenderable -> addNode(modelRenderable))
+                                .thenAccept(modelRenderable -> addRouteNode(modelRenderable, scale))
                                 .exceptionally(throwable -> {
-                                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                    AlertDialog.Builder builder = new AlertDialog.Builder(ARActivity.this);
                                     builder.setMessage("Something is not right" + throwable.getMessage()).show();
                                     return null;
-                                }); */
+                                });
     }
 
     private void updateNode() {
 
 
         Camera camera = arCam.getArSceneView().getScene().getCamera();
-        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/3);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
 
 
         //
-        //  O    |         \
-        // /|\  1.5m       2.5m
-        // / \   | __ 2m __  \
-        Vector3 rp = ray.getPoint(2.5f);
+        Vector3 rp = ray.getPoint(5f);
         model.setWorldPosition(rp);
         // Rotate model from view point to current location
         Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
@@ -283,12 +239,12 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             vertexCurrent.setX(utmCurrent.getX());
             vertexCurrent.setY(utmCurrent.getY());
 
+
             // View point
-            // d = 1, TODO: calculate based on the height?
-            //  O  \
-            // /|\  1m
-            // / \   \
-            int d = 1;
+            //  O    |         \
+            // /|\  1.5m       1.8m
+            // / \   | __ 1m __  \
+            double d = 1.8;
             viewPoint = vertexCurrent.add(new Vertex(d*Math.sin(Math.toRadians(yaw)),
                     d*Math.cos(Math.toRadians(yaw)),
                     0));
@@ -315,10 +271,10 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
             // Direction from view to next point on route
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
+            final Vertex diffFromNextToPrev = prevPnt.sub(nextPnt);
 
             // Distance from view to next point
-            // TODO: length/20 or /10?
-            loadRouteModel(diffFromViewToNext.length()/20);
+            loadRouteModel(diffFromViewToNext.length()/diffFromNextToPrev.length());
 
             final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
             double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
@@ -328,36 +284,46 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     directionFromViewToNext.dot(directionFromViewToCurrent)/
                             (directionFromViewToNext.length()*directionFromViewToCurrent.length())
             );
-            // TODO: change 150 to 165?
-            if (Math.toDegrees(angleBetweenTwoVector)>165){
+            // TODO: 150
+            if (Math.toDegrees(angleBetweenTwoVector)>150){
                 rotationDegree = Math.PI;
             }else{
                 rotationDegree = beta - alpha;
             }
+            final Quaternion finalQ;
+            final Quaternion faceToBed;
+            final Quaternion lookFromViewToNext;
+            // TODO: 45 and 135?
+            if (Math.toDegrees(angleBetweenTwoVector)>45 &&  Math.toDegrees(angleBetweenTwoVector)<135){
+                finalQ = Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree)+270f);
+            }else{
+                faceToBed = Quaternion.axisAngle(Vector3.right(), 90f);
+                lookFromViewToNext = Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree)+270f);
 
-            final Quaternion lookFromViewToNext =
-                    Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree));
+                finalQ = Quaternion.multiply(lookFromViewToNext, faceToBed );
+            }
 
+            model.setWorldRotation(finalQ);
 
-            model.setWorldRotation(lookFromViewToNext);
 
             if (ni!=0){
                 // to debug
-                /* test.setText(
-                        "len route = "+ route.size()+"\n" +
-                                "ni = "+ ni+"\n"+
-                                "current = " + utmCurrent.getX()+", "+ utmCurrent.getY()+"\n"+
-                                "yaw = "+ yaw+"\n"+
-                                "view = " +viewPoint.getX()+", "+viewPoint.getY()+"\n"+
-                                "next = "+nextPnt.getX()+", "+nextPnt.getY()+"\n"+
-                                "directionFromViewToNext = "+ directionFromViewToNext.getX()+", "+
-                                directionFromViewToNext.getY()+"\n"+
-                                " angleBetweenTwoVector = "+Math.toDegrees(angleBetweenTwoVector)+"\n"+
-                                "distance to next point = "+ diffFromViewToNext.length()
-
-                );*/
+//                test.setText(
+//                        "len route = "+ route.size()+"\n" +
+//                                "ni = "+ ni+"\n"+
+//                                "current = " + utmCurrent.getX()+", "+ utmCurrent.getY()+"\n"+
+//                                "yaw = "+ yaw+"\n"+
+//                                "view = " +viewPoint.getX()+", "+viewPoint.getY()+"\n"+
+//                                "next = "+nextPnt.getX()+", "+nextPnt.getY()+"\n"+
+//                                "directionFromViewToNext = "+ directionFromViewToNext.getX()+", "+
+//                                directionFromViewToNext.getY()+"\n"+
+//                                " angleBetweenTwoVector = "+Math.toDegrees(angleBetweenTwoVector)+"\n"+
+//                                "distance to next point = "+ diffFromViewToNext.length()
+//
+//                );
                 if (!route.finish(ni)){
-                    if (2.5*nextPnt.distance(vertexCurrent)<=prevPnt.distance(vertexCurrent)){
+                    // TODO:1.3?
+                    if (diffFromViewToNext.length()/10<1.3){
 
                         ni = route.next(ni);
                     }
@@ -378,7 +344,10 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
     }
 
-    private void addNode(ModelRenderable modelRenderable) {
+
+    private void addDestinationNode(ModelRenderable modelRenderable) {
+        arCam.getArSceneView().getPlaneRenderer().setVisible(false);
+
         Node node = new Node();
 
         // Remove old object
@@ -389,13 +358,44 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         }
         node.setParent(arCam.getArSceneView().getScene());
         Camera camera = arCam.getArSceneView().getScene().getCamera();
-        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/3);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
 
         model = new TransformableNode(arCam.getTransformationSystem());
+        model.getScaleController().setMaxScale(0.25f);
+        model.getScaleController().setMinScale(0.2f);
+        model.setLocalPosition(ray.getPoint(5f));
         model.setParent(node);
         model.setRenderable(modelRenderable);
-        model.setLocalPosition(ray.getPoint(2f));
+        model.getTransformationSystem().selectNode(null);
+        oldNode = node;
+        arCam.getArSceneView().getScene().addChild(oldNode);
 
+    }
+
+
+    private void addRouteNode(ModelRenderable modelRenderable, double scale ) {
+        arCam.getArSceneView().getPlaneRenderer().setVisible(false);
+
+        Node node = new Node();
+
+        // Remove old object
+        if(oldNode!=null){
+            Node nodeToRemove = arCam.getArSceneView().getScene().getChildren().get(1);
+            arCam.getArSceneView().getScene().removeChild(nodeToRemove);
+
+        }
+        node.setParent(arCam.getArSceneView().getScene());
+        Camera camera = arCam.getArSceneView().getScene().getCamera();
+        Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
+
+        model = new TransformableNode(arCam.getTransformationSystem());
+        //TODO: scale?
+        model.getScaleController().setMaxScale((float)scale*6/1000);
+        model.getScaleController().setMinScale((float)scale*4/1000);
+        model.setLocalPosition(ray.getPoint(5f));
+        model.setParent(node);
+        model.setRenderable(modelRenderable);
+        model.getTransformationSystem().selectNode(null);
         oldNode = node;
         arCam.getArSceneView().getScene().addChild(oldNode);
 
@@ -481,7 +481,15 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             }else{
                 yaw = 0;
                 for (int i = 0; i < yaws.size(); i++) {
-                    yaw += yaws.get(i);
+                    if ( yaws.get(i)<-170 || yaws.get(i)>170) {
+                        if (yaws.get(0)>0){
+                            yaw += Math.abs(yaws.get(i));
+                        }else{
+                            yaw += -Math.abs(yaws.get(i));
+                        }
+                    }else{
+                        yaw += yaws.get(i);
+                    }
                 }
                 yaw = yaw/yaws.size();
                 if (Math.abs(yaw - (float)Math.toDegrees(values[0]) )>20 &&
@@ -490,7 +498,15 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     yaws.add(yaw);
                     yaw = 0;
                     for (int i = 0; i < yaws.size(); i++) {
-                        yaw += yaws.get(i);
+                        if ( yaws.get(i)<-170 || yaws.get(i)>170) {
+                            if (yaws.get(0)>0){
+                                yaw += Math.abs(yaws.get(i));
+                            }else{
+                                yaw += -Math.abs(yaws.get(i));
+                            }
+                        }else{
+                            yaw += yaws.get(i);
+                        }
                     }
                     yaw = yaw/yaws.size();
                 }else{
@@ -500,7 +516,15 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     yaws.add((float)Math.toDegrees(values[0]));
                     yaw = 0;
                     for (int i = 0; i < yaws.size(); i++) {
-                        yaw += yaws.get(i);
+                        if ( yaws.get(i)<-170 || yaws.get(i)>170) {
+                            if (yaws.get(0)>0){
+                                yaw += Math.abs(yaws.get(i));
+                            }else{
+                                yaw += -Math.abs(yaws.get(i));
+                            }
+                        }else{
+                            yaw += yaws.get(i);
+                        }
                     }
                     yaw /= yaws.size();
                 }
