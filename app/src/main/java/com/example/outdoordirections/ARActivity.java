@@ -324,8 +324,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     directionFromViewToNext.dot(directionFromViewToCurrent)/
                             (directionFromViewToNext.length()*directionFromViewToCurrent.length())
             );
-            // TODO: change 150 to 170?
-            if (Math.toDegrees(angleBetweenTwoVector)>150){
+            // TODO: change 150 to 165?
+            if (Math.toDegrees(angleBetweenTwoVector)>165){
                 rotationDegree = Math.PI;
             }else{
                 rotationDegree = beta - alpha;
