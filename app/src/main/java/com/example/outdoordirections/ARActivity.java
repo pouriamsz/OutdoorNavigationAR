@@ -313,7 +313,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
 
             // Distance from view to next point
-            loadRouteModel(diffFromViewToNext.length()/10);
+            // TODO: length/20 or /10?
+            loadRouteModel(diffFromViewToNext.length()/20);
 
             final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
             double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
@@ -323,6 +324,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     directionFromViewToNext.dot(directionFromViewToCurrent)/
                             (directionFromViewToNext.length()*directionFromViewToCurrent.length())
             );
+            // TODO: change 150 to 170?
             if (Math.toDegrees(angleBetweenTwoVector)>150){
                 rotationDegree = Math.PI;
             }else{
@@ -336,7 +338,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             model.setWorldRotation(lookFromViewToNext);
 
             if (ni!=0){
-                test.setText(
+                // to debug
+                /* test.setText(
                         "len route = "+ route.size()+"\n" +
                                 "ni = "+ ni+"\n"+
                                 "current = " + utmCurrent.getX()+", "+ utmCurrent.getY()+"\n"+
@@ -348,7 +351,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                                 " angleBetweenTwoVector = "+Math.toDegrees(angleBetweenTwoVector)+"\n"+
                                 "distance to next point = "+ diffFromViewToNext.length()
 
-                );
+                );*/
                 if (!route.finish(ni)){
                     if (2.5*nextPnt.distance(vertexCurrent)<=prevPnt.distance(vertexCurrent)){
 
@@ -363,7 +366,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             }else{
                 // Route has just one point so
                 // View point is on destination, put marker
-                if (diffFromViewToNext.length()<0.5){
+                if (diffFromViewToNext.length()/10<1.5){
                     loadDestinationModel();
                 }
             }
