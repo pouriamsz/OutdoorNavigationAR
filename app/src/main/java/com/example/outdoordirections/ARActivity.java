@@ -262,10 +262,14 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
 
         Camera camera = arCam.getArSceneView().getScene().getCamera();
-        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/2);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/3);
 
 
-        Vector3 rp = ray.getPoint(2f);
+        //
+        //  O    |         \
+        // /|\  1.5m       2.5m
+        // / \   | __ 2m __  \
+        Vector3 rp = ray.getPoint(2.5f);
         model.setWorldPosition(rp);
         // Rotate model from view point to current location
         Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
@@ -281,9 +285,9 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
             // View point
             // d = 1, TODO: calculate based on the height?
-            //  O
-            // /|\
-            // / \ __ 1m __
+            //  O  \
+            // /|\  1m
+            // / \   \
             int d = 1;
             viewPoint = vertexCurrent.add(new Vertex(d*Math.sin(Math.toRadians(yaw)),
                     d*Math.cos(Math.toRadians(yaw)),
@@ -385,7 +389,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         }
         node.setParent(arCam.getArSceneView().getScene());
         Camera camera = arCam.getArSceneView().getScene().getCamera();
-        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/2);
+        Ray ray = camera.screenPointToRay(deviceWidth/2, deviceHeight/3);
 
         model = new TransformableNode(arCam.getTransformationSystem());
         model.setParent(node);
