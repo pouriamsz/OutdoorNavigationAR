@@ -346,8 +346,19 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     }
 
     private Vertex projectOnLine(Vertex prevPnt, Vertex nextPnt) {
-        Vertex n = prevPnt.sub(nextPnt).normalize();
-        Vertex projected = prevPnt.add(n.mulScalar(n.dot(prevPnt.sub(vertexCurrent))));
+        double l2 = prevPnt.distance(nextPnt)*prevPnt.distance(nextPnt);
+        if (l2==0){
+            return vertexCurrent;
+        }
+
+        double t = prevPnt.sub(vertexCurrent).dot(prevPnt.sub(nextPnt))/l2;
+        if (t > 1 || t < 0){
+            return vertexCurrent;
+        }
+
+        double minT = Math.min(1,t);
+        double maxT = Math.max(0, minT);
+        Vertex projected = prevPnt.add((prevPnt.sub(nextPnt).mulScalar(maxT)));
         return projected;
     }
 
