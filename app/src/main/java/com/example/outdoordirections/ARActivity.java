@@ -369,14 +369,14 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     }
                 }else{
                     // View point is on destination, put marker
-                    if (diffFromViewToNext.length()/10<0.5){
+                    if (diffFromViewToNext.length()/10<1.0){
                         loadDestinationModel();
                     }
                 }
             }else{
                 // Route has just one point so
                 // View point is on destination, put marker
-                if (diffFromViewToNext.length()/10<0.5){
+                if (diffFromViewToNext.length()/10<1.0){
                     loadDestinationModel();
                 }
             }
