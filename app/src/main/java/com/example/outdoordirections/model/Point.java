@@ -60,13 +60,10 @@ public class Point implements Serializable {
 
     // this should be current point
     public Point toCartesianCoordinateNoRotation(Point point) {
-        // TODO: test?
-//        double x = (point.lon - this.lon) * this.metersPerDegreeLongitude;
-//        double y = (point.lat - this.lon) * this.metersPerDegreeLatitude;
-
         double x = point.x - this.x;
         double y = point.y - this.y;
 
+        // TODO: lat & lon is wrong, x and y should convert to lat & lon
         return new Point(x, y, point.lat, point.lon);
     }
 
@@ -74,6 +71,8 @@ public class Point implements Serializable {
     public Point toCoordinateNoRotation(Point point) {
         double latitude = this.lat + point.lat;
         double longitude = this.lon + point.lon;
+
+        // TODO: x & y is wrong, lat & lon should convert to x & y
         return new Point(point.x, point.y, latitude, longitude);
     }
 
