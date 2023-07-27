@@ -97,10 +97,10 @@ public class Point implements Serializable {
     }
 
     // Distance by lat & lon
-    public double geoDistance(Point p1, Point p2) {
+    public double geoDistance( Point p2) {
         //  https://www.tabnine.com/code/java/methods/java.lang.Math/toRadians?snippet=59212f4b4758780004fb373b
-        double dLat1 = p1.getLat();
-        double dLon1 = p1.getLon();
+        double dLat1 = this.getLat();
+        double dLon1 = this.getLon();
         double dLat2 = p2.getLat();
         double dLon2 = p2.getLon();
         double deltaLat = Math.toRadians(dLat2 - dLat1);
