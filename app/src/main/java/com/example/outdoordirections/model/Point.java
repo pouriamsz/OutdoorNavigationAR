@@ -88,11 +88,30 @@ public class Point implements Serializable {
         this.y = northing;
     }
 
+    // Distance by x & y
     public double distance(Point p) {
         return Math.sqrt((this.x - p.x) * (this.x - p.x) +
                 (this.y - p.y) * (this.y - p.y) +
                 (this.z - p.z) * (this.z - p.z)
         );
+    }
+
+    // Distance by lat & lon
+    public double geoDistance(Point p1, Point p2) {
+        //  https://www.tabnine.com/code/java/methods/java.lang.Math/toRadians?snippet=59212f4b4758780004fb373b
+        double dLat1 = p1.getLat();
+        double dLon1 = p1.getLon();
+        double dLat2 = p2.getLat();
+        double dLon2 = p2.getLon();
+        double deltaLat = Math.toRadians(dLat2 - dLat1);
+        double deltaLon = Math.toRadians(dLon2 - dLon1);
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                Math.cos(Math.toRadians(dLat1)) * Math.cos(Math.toRadians(dLat2)) *
+                        Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double dist = (6371000 * c);
+
+        return dist;
     }
 }
 
