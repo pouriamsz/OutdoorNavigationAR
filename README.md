@@ -38,7 +38,8 @@ After launching the OutdoorNavigationAR app, click your desired destination on t
 
 ##  Test video
 
-https://github.com/pouriamsz/OutdoorNavigationAR/assets/60801595/bbdd7dbb-0b67-44f9-b39c-b3204b2ffe11
+https://github.com/pouriamsz/OutdoorNavigationAR/assets/60801595/d139b3e0-c419-4b41-8a54-b6095c297b41
+
 
 # Indoor Navigation 
 ## `TODO`
