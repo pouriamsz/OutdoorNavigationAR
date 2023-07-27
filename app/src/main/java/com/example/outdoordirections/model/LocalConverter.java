@@ -9,15 +9,13 @@ public class LocalConverter {
         this.center = center;
     }
 
-    public Point toCartesian(double x, double y, double lat, double lng) {
-        Point geoCoordinate = new Point(x, y, lat, lng);
+    public Point toCartesian(Point geoCoordinate) {
         Point nonRotated = this.center.toCartesianCoordinateNoRotation(geoCoordinate);
         Point rotated = this.rotate(nonRotated, this.rotation);
         return rotated;
     }
 
-    public Point toCoordinate(double x, double y) {
-        Point coordinate = new Point(x, y, 0, 0);
+    public Point toCoordinate(Point coordinate) {
         Point rotatedPoints = this.rotate(coordinate, -this.rotation);
         return this.center.toCoordinateNoRotation(rotatedPoints);
     }
@@ -31,6 +29,7 @@ public class LocalConverter {
         double qx = ox + Math.cos(radians) * (px - ox) - Math.sin(radians) * (py - oy);
         double qy = oy + Math.sin(radians) * (px - ox) + Math.cos(radians) * (py - oy);
 
+        // TODO: calculate lat and lon
         return new Point(qx, qy, 0, 0);
     }
 

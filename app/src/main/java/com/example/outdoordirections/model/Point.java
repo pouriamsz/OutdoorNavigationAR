@@ -1,7 +1,5 @@
 package com.example.outdoordirections.model;
 
-import org.osmdroid.util.GeoPoint;
-
 import java.io.Serializable;
 
 import uk.me.jstott.jcoord.LatLng;

@@ -22,11 +22,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.outdoordirections.model.LocalCoordiante;
 import com.example.outdoordirections.model.Point;
 import com.example.outdoordirections.model.Route;
 import com.example.outdoordirections.model.Vertex;
@@ -37,10 +35,7 @@ import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.collision.Ray;
 import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
-import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
-import com.google.ar.sceneform.rendering.ShapeFactory;
-import com.google.ar.sceneform.rendering.Texture;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 

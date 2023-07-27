@@ -25,7 +25,7 @@ public class SplashScreen extends AppCompatActivity {
         boolean checkList = checkLocationPermissions();
         int delay;
         if (checkList){
-            delay = 5000;
+            delay = 3000;
         }else{
             delay = 1200;
         }

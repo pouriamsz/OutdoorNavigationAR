@@ -1,7 +1,5 @@
 package com.example.outdoordirections.model;
 
-import org.osmdroid.util.GeoPoint;
-
 public class LocalCoordiante {
     Point center;
 
@@ -26,7 +24,7 @@ public class LocalCoordiante {
         LocalConverter converter = new LocalConverter(center, Math.toRadians(yaw));
 
         // converting the lat long of the location or the poi to local coordinates
-        Point mainPoint = converter.toCartesian(point.getX(), point.getY(), point.getLat(), point.getLon());
+        Point mainPoint = converter.toCartesian(point);
 
 
         return mainPoint;
