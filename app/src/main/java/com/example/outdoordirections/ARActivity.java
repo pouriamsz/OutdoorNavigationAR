@@ -10,6 +10,9 @@ import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -36,11 +39,19 @@ import com.google.ar.sceneform.collision.Ray;
 import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.rendering.PlaneRenderer;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
+import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.CustomZoomButtonsController;
+import org.osmdroid.views.MapController;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -60,10 +71,16 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     ArrayList<Point> currents = new ArrayList<>();
     Vertex vertexCurrent = new Vertex(0,0, 0);
     Vertex viewPoint = new Vertex(0,0, 0);
+    Point utmDestination = new Point(0,0,0,0);
 
+    // Map
+    private MapView osm;
+    private IMapController mc;
+    Marker currentMarker, destinationMarker;
 
     // Route
     Route route = new Route(new ArrayList<>());
+    Polyline pathLine;
     int ni;
 
     // AR variables
@@ -120,6 +137,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
 
 
+
         // Get route
         ArrayList<Point> points = (ArrayList<Point>)getIntent().getSerializableExtra("route");
         route.setPoints(points);
@@ -139,7 +157,6 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         }
 
 
-        test = findViewById(R.id.testText);
         // current location
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         getMyLocation();
@@ -181,6 +198,20 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             return;
         }
 
+        // Map
+        osm = findViewById(R.id.arMapview);
+        osm.bringToFront();
+        osm.setTranslationZ(100);
+        currentMarker = new Marker(osm);
+        destinationMarker = new Marker(osm);
+        pathLine = new Polyline(osm);
+        osm.setTileSource(TileSourceFactory.MAPNIK);
+        osm.getZoomController().setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT);
+        osm.setMultiTouchControls(true);
+        mc = (MapController) osm.getController();
+        mc.setZoom(18.0);
+        utmDestination = (Point) getIntent().getSerializableExtra("destination");
+        addMarkerLocation(new GeoPoint(utmDestination.getLat(), utmDestination.getLon()));
     }
 
 
@@ -215,7 +246,6 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
     private void updateNode() {
 
-
         Camera camera = arCam.getArSceneView().getScene().getCamera();
         Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
 
@@ -246,6 +276,15 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     d*Math.cos(Math.toRadians(yaw)),
                     0));
 
+
+            // show route on map
+            ArrayList<GeoPoint> routeGeo = new ArrayList<>();
+            routeGeo.add(new GeoPoint(utmCurrent.getLat(), utmCurrent.getLon()));
+            for (int i = ni; i < route.size(); i++) {
+                routeGeo.add(new GeoPoint(route.getPoints().get(i).getLat(),
+                        route.getPoints().get(i).getLon()));
+            }
+            drawCustomPolyline(routeGeo);
 
             Vertex nextPnt = new Vertex(route.getPoints().get(ni).getX(),
                     route.getPoints().get(ni).getY(),
@@ -324,20 +363,20 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 //                );
                 if (!route.finish(ni)){
                     // TODO:1.?
-                    if (diffFromViewToNext.length()/10<1.0){
+                    if (diffFromViewToNext.length()/10<0.5){
 
                         ni = route.next(ni);
                     }
                 }else{
                     // View point is on destination, put marker
-                    if (diffFromViewToNext.length()/10<1.5){
+                    if (diffFromViewToNext.length()/10<0.5){
                         loadDestinationModel();
                     }
                 }
             }else{
                 // Route has just one point so
                 // View point is on destination, put marker
-                if (diffFromViewToNext.length()/10<1.5){
+                if (diffFromViewToNext.length()/10<0.5){
                     loadDestinationModel();
                 }
             }
@@ -439,6 +478,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 utmCurrent.setLon(currentLocation.getLongitude());
                 utmCurrent.convert2utm();
                 modifyCurrent();
+                addMarker(currentLocation);
+                mc.animateTo(currentLocation);
             }
         }
 
@@ -476,6 +517,67 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             utmCurrent.setX(x);
             utmCurrent.setY(y);
         }
+    }
+
+
+    // draw polyline function
+    public void drawCustomPolyline(ArrayList<GeoPoint> points) {
+
+        try {
+            osm.getOverlays().remove(pathLine);
+        } catch (Exception ex) {
+
+        }
+
+
+        pathLine.setPoints(points);
+        pathLine.setInfoWindow(null);
+        pathLine.getOutlinePaint().setStrokeCap(Paint.Cap.ROUND);
+        pathLine.getOutlinePaint().setColor(Color.rgb(0, 191, 255));
+        pathLine.getOutlinePaint().setStyle(Paint.Style.FILL);
+        pathLine.getOutlinePaint().setAntiAlias(true);
+
+        osm.getOverlays().add(pathLine);
+        osm.invalidate();
+
+
+    }
+
+    // update marker
+    public void addMarkerLocation(GeoPoint destination) {
+        osm.getOverlays().remove(destinationMarker);
+        destinationMarker = new Marker(osm);
+        destinationMarker.setPosition(destination);
+        destinationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        Drawable markerIcon = getResources().getDrawable(R.drawable.location);
+        destinationMarker.setIcon(markerIcon);
+
+
+        osm.getOverlays().add(destinationMarker);
+        osm.invalidate();
+        destinationMarker.setTitle("Destination");
+    }
+
+    // update marker - current location
+    public void addMarker(GeoPoint current) {
+        osm.getOverlays().remove(currentMarker);
+        currentMarker = new Marker(osm);
+        currentMarker.setPosition(current);
+        currentMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        Drawable markerIcon = getResources().getDrawable(R.drawable.mylocation32blue);
+        currentMarker.setIcon(markerIcon);
+
+//        for (int i = 0; i < osm.getOverlays().size(); i++) {
+//            Overlay overlay = osm.getOverlays().get(i);
+//            if (overlay instanceof Marker && ((Marker) overlay).getId().equals("String")) {
+//                osm.getOverlays().remove(overlay);
+//            }
+//        }
+
+//        osm.getOverlays().clear();
+        osm.getOverlays().add(currentMarker);
+        osm.invalidate();
+        currentMarker.setTitle("Current Location");
     }
 
     // get current location
@@ -594,6 +696,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     @Override
     public void onPause() {
         super.onPause();
+        osm.onPause();
         // TODO: Should be tested this line
         // locationManager.removeUpdates(locationListener);
         sensorManager.unregisterListener(this);
@@ -610,6 +713,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         super.onResume();
         getMyLocation();
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
+        osm.onResume();
 
         Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (accelerometer != null) {

@@ -117,6 +117,7 @@ public class MapActivity extends AppCompatActivity {
                             ArrayList<Point> points = route.getPoints();
                             Intent intent = new Intent(MapActivity.this, ARActivity.class);
                             intent.putExtra("route", points);
+                            intent.putExtra("destination", utmDestination);
                             startActivity(intent);
                             finish();
                             overridePendingTransition(R.anim.slide_in_left,R.anim.slide_out_left);
