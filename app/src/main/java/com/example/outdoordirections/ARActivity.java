@@ -57,6 +57,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     // Current location
     GeoPoint currentLocation;
     Point utmCurrent = new Point(0,0, 0, 0);
+    ArrayList<Point> currents = new ArrayList<>();
     Vertex vertexCurrent = new Vertex(0,0, 0);
     Vertex viewPoint = new Vertex(0,0, 0);
 
@@ -235,6 +236,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             vertexCurrent.setY(utmCurrent.getY());
 
 
+            // TODO: 1.8 m
             // View point
             //  O    |         \
             // /|\  1.5m       1.8m
@@ -258,6 +260,10 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                         route.getPoints().get(ni).getY(),
                         0.0);
             }
+            // TODO: project onto line
+            // check distance from line
+//            Vertex projected = projectOnLine( prevPnt, nextPnt);
+
             // Rotate from view to destination
             // Direction from view to current == model initial direction
             final Vertex diffFromViewToCurrent = vertexCurrent.sub(viewPoint);
@@ -279,8 +285,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     directionFromViewToNext.dot(directionFromViewToCurrent)/
                             (directionFromViewToNext.length()*directionFromViewToCurrent.length())
             );
-            // TODO: 150
-            if (Math.toDegrees(angleBetweenTwoVector)>150){
+            // TODO: 140?
+            if (Math.toDegrees(angleBetweenTwoVector)>140){
                 rotationDegree = Math.PI;
             }else{
                 rotationDegree = beta - alpha;
@@ -317,8 +323,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 //
 //                );
                 if (!route.finish(ni)){
-                    // TODO:1.3?
-                    if (diffFromViewToNext.length()/10<1.3){
+                    // TODO:1.?
+                    if (diffFromViewToNext.length()/10<1.0){
 
                         ni = route.next(ni);
                     }
@@ -337,6 +343,12 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             }
         }
 
+    }
+
+    private Vertex projectOnLine(Vertex prevPnt, Vertex nextPnt) {
+        Vertex n = prevPnt.sub(nextPnt).normalize();
+        Vertex projected = prevPnt.add(n.mulScalar(n.dot(prevPnt.sub(vertexCurrent))));
+        return projected;
     }
 
 
@@ -385,6 +397,9 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
         model = new TransformableNode(arCam.getTransformationSystem());
         //TODO: scale?
+        if (scale<0.5){
+            scale = 0.5;
+        }
         model.getScaleController().setMaxScale((float)scale*6/1000);
         model.getScaleController().setMinScale((float)scale*4/1000);
         model.setLocalPosition(ray.getPoint(5f));
@@ -412,7 +427,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 utmCurrent.setLat(currentLocation.getLatitude());
                 utmCurrent.setLon(currentLocation.getLongitude());
                 utmCurrent.convert2utm();
-
+                modifyCurrent();
             }
         }
 
@@ -431,6 +446,26 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         }
     }
 
+    private void modifyCurrent(){
+        double x = 0,y =0;
+        if (currents.size()==0){
+            currents.add(utmCurrent);
+        }else{
+            x = 0;
+            y = 0;
+            if (currents.size()>5){
+                currents.remove(0);
+            }
+            for (int i = 0; i < currents.size() ; i++) {
+                x += currents.get(i).getX();
+                y += currents.get(i).getY();
+            }
+            x /= currents.size();
+            y /= currents.size();
+            utmCurrent.setX(x);
+            utmCurrent.setY(y);
+        }
+    }
 
     // get current location
     public void getMyLocation() {
@@ -470,10 +505,40 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             // multiplied by a global standard value to get accurate results
 
             // this is the yaw or the azimuth we need
-            if (yaws.size()==0){
-                yaw = (float)Math.toDegrees(values[0]);
+            modifyYaw(values[0]);
+
+            pitch = (float)Math.toDegrees(values[1]);
+            roll = (float)Math.toDegrees(values[2]);
+
+            //retrigger the loop when things are repopulated
+            mags = null;
+            accels = null;
+        }
+
+    }
+
+    private void modifyYaw(float value) {
+        if (yaws.size()==0){
+            yaw = (float)Math.toDegrees(value);
+            yaws.add(yaw);
+        }else{
+            yaw = 0;
+            for (int i = 0; i < yaws.size(); i++) {
+                if ( yaws.get(i)<-170 || yaws.get(i)>170) {
+                    if (yaws.get(0)>0){
+                        yaw += Math.abs(yaws.get(i));
+                    }else{
+                        yaw += -Math.abs(yaws.get(i));
+                    }
+                }else{
+                    yaw += yaws.get(i);
+                }
+            }
+            yaw = yaw/yaws.size();
+            if (Math.abs(yaw - (float)Math.toDegrees(value) )>20 &&
+                    Math.abs(yaw - (float)Math.toDegrees(value) )<35){
+                yaws.remove(0);
                 yaws.add(yaw);
-            }else{
                 yaw = 0;
                 for (int i = 0; i < yaws.size(); i++) {
                     if ( yaws.get(i)<-170 || yaws.get(i)>170) {
@@ -487,52 +552,27 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     }
                 }
                 yaw = yaw/yaws.size();
-                if (Math.abs(yaw - (float)Math.toDegrees(values[0]) )>20 &&
-                        Math.abs(yaw - (float)Math.toDegrees(values[0]) )<35){
+            }else{
+                if (yaws.size()>5){
                     yaws.remove(0);
-                    yaws.add(yaw);
-                    yaw = 0;
-                    for (int i = 0; i < yaws.size(); i++) {
-                        if ( yaws.get(i)<-170 || yaws.get(i)>170) {
-                            if (yaws.get(0)>0){
-                                yaw += Math.abs(yaws.get(i));
-                            }else{
-                                yaw += -Math.abs(yaws.get(i));
-                            }
-                        }else{
-                            yaw += yaws.get(i);
-                        }
-                    }
-                    yaw = yaw/yaws.size();
-                }else{
-                    if (yaws.size()>5){
-                        yaws.remove(0);
-                    }
-                    yaws.add((float)Math.toDegrees(values[0]));
-                    yaw = 0;
-                    for (int i = 0; i < yaws.size(); i++) {
-                        if ( yaws.get(i)<-170 || yaws.get(i)>170) {
-                            if (yaws.get(0)>0){
-                                yaw += Math.abs(yaws.get(i));
-                            }else{
-                                yaw += -Math.abs(yaws.get(i));
-                            }
-                        }else{
-                            yaw += yaws.get(i);
-                        }
-                    }
-                    yaw /= yaws.size();
                 }
-
+                yaws.add((float)Math.toDegrees(value));
+                yaw = 0;
+                for (int i = 0; i < yaws.size(); i++) {
+                    if ( yaws.get(i)<-170 || yaws.get(i)>170) {
+                        if (yaws.get(0)>0){
+                            yaw += Math.abs(yaws.get(i));
+                        }else{
+                            yaw += -Math.abs(yaws.get(i));
+                        }
+                    }else{
+                        yaw += yaws.get(i);
+                    }
+                }
+                yaw /= yaws.size();
             }
-            pitch = (float)Math.toDegrees(values[1]);
-            roll = (float)Math.toDegrees(values[2]);
 
-            //retrigger the loop when things are repopulated
-            mags = null;
-            accels = null;
         }
-
     }
 
     @Override
