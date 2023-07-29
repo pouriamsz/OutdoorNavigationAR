@@ -90,7 +90,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     private int deviceHeight, deviceWidth;
     private int count = 0;
     private Scene.OnUpdateListener sceneUpdate;
-
+    private ArrayList<Double> angleBetweenTwoVectorList = new ArrayList<>();
 
     // Sensor
     private float Rot[] = null; //for gravity rotational data
@@ -324,8 +324,9 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     directionFromViewToNext.dot(directionFromViewToCurrent)/
                             (directionFromViewToNext.length()*directionFromViewToCurrent.length())
             );
+            angleBetweenTwoVector = modifyAngle(angleBetweenTwoVector);
             // TODO: 140?
-            if (Math.toDegrees(angleBetweenTwoVector)>140){
+            if (Math.toDegrees(angleBetweenTwoVector)>130){
                 rotationDegree = Math.PI;
             }else{
                 rotationDegree = beta - alpha;
@@ -334,7 +335,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             final Quaternion faceToBed;
             final Quaternion lookFromViewToNext;
             // TODO: 45 and 135?
-            if (Math.toDegrees(angleBetweenTwoVector)>45 &&  Math.toDegrees(angleBetweenTwoVector)<135){
+            if (Math.toDegrees(angleBetweenTwoVector)>45 &&  Math.toDegrees(angleBetweenTwoVector)<125){
                 finalQ = Quaternion.axisAngle(Vector3.up(), (float)Math.toDegrees(initial2dRotate+rotationDegree)+270f);
             }else{
                 faceToBed = Quaternion.axisAngle(Vector3.right(), 90f);
@@ -363,9 +364,10 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 //                );
                 if (!route.finish(ni)){
                     // TODO:1.?
-                    if (diffFromViewToNext.length()/10<0.5){
+                    if (diffFromViewToNext.length()/10<0.75){
 
                         ni = route.next(ni);
+                        angleBetweenTwoVectorList = new ArrayList<>();
                     }
                 }else{
                     // View point is on destination, put marker
@@ -382,6 +384,26 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             }
         }
 
+    }
+
+    private double modifyAngle(double angleBetweenTwoVector) {
+        double meanAngle = 0.;
+        if (angleBetweenTwoVectorList.size()>0){
+            if (angleBetweenTwoVectorList.size()>10){
+                angleBetweenTwoVectorList.remove(0);
+            }
+            angleBetweenTwoVectorList.add(angleBetweenTwoVector);
+            for (int i = 0; i < angleBetweenTwoVectorList.size() ; i++) {
+                meanAngle +=  angleBetweenTwoVectorList.get(i);
+            }
+
+            meanAngle /= angleBetweenTwoVectorList.size();
+        }else{
+            angleBetweenTwoVectorList.add(angleBetweenTwoVector);
+            meanAngle = angleBetweenTwoVector;
+        }
+
+        return meanAngle;
     }
 
     private Vertex projectOnLine(Vertex prevPnt, Vertex nextPnt) {
