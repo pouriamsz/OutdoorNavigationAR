@@ -471,6 +471,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         //TODO: scale?
         if (scale<0.5){
             scale = 0.5;
+        }else if (scale > 1.0){
+            scale = 1.0;
         }
         model.getScaleController().setMaxScale((float)scale*6/1000);
         model.getScaleController().setMinScale((float)scale*4/1000);
