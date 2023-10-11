@@ -266,12 +266,12 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             vertexCurrent.setY(utmCurrent.getY());
 
 
-            // TODO: 1.8 m
+            // TODO: 2 m
             // View point
             //  O    |         \
-            // /|\  1.5m       1.8m
+            // /|\  1.5m       2m
             // / \   | __ 1m __  \
-            double d = 1.8;
+            double d = 2;
             viewPoint = vertexCurrent.add(new Vertex(d*Math.sin(Math.toRadians(yaw)),
                     d*Math.cos(Math.toRadians(yaw)),
                     0));
