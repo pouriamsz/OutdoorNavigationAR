@@ -31,6 +31,9 @@ import android.widget.Toast;
 import com.example.outdoordirections.model.Point;
 import com.example.outdoordirections.model.Route;
 import com.example.outdoordirections.model.Vertex;
+import com.google.ar.core.Plane;
+import com.google.ar.core.Pose;
+import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.Camera;
 import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.Node;
@@ -54,6 +57,7 @@ import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Objects;
 
 public class ARActivity extends AppCompatActivity implements SensorEventListener {
@@ -89,7 +93,6 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     TransformableNode model;
     private int deviceHeight, deviceWidth;
     private int count = 0;
-    private Scene.OnUpdateListener sceneUpdate;
     private ArrayList<Double> angleBetweenTwoVectorList = new ArrayList<>();
 
     // Sensor
@@ -171,29 +174,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
             // ArFragment is linked up with its respective id used in the activity_main.xml
             arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
-            if (oldNode==null){
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        loadRouteModel(0.005);
-                    }
-                },5000);
-            }
 
-            sceneUpdate = new Scene.OnUpdateListener() {
-                @Override
-                public void onUpdate(FrameTime frameTime) {
-                    // TODO: ?
-                    // arCam.onUpdate(frameTime);
-                    if(oldNode!=null){
-//                        if (count%100==0){
-                        updateNode();
-//                        }
-//                        count++;
-                    }
-                }
-            };
-            arCam.getArSceneView().getScene().addOnUpdateListener(sceneUpdate);
+            arCam.getArSceneView().getScene().addOnUpdateListener(this::updateNode);
         } else {
             return;
         }
@@ -221,7 +203,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 .setIsFilamentGltf(true)
                 .build()
                 .thenAccept(modelRenderable ->{
-                    arCam.getArSceneView().getScene().removeOnUpdateListener(sceneUpdate);
+                    arCam.getArSceneView().getScene().removeOnUpdateListener(this::updateNode);
                     addDestinationNode(modelRenderable);
                 })
                 .exceptionally(throwable -> {
@@ -244,15 +226,19 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                                 });
     }
 
-    private void updateNode() {
+    private void updateNode(FrameTime frameTime) {
 
-        Camera camera = arCam.getArSceneView().getScene().getCamera();
-        Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
+        /*
+            Collection<Plane> planes = arCam.getArSceneView().getArFrame().getUpdatedTrackables(Plane.class);
+            for (Plane plane: planes) {
+                if (plane.getTrackingState() == TrackingState.TRACKING){
+                    Pose pose = plane.getCenterPose();
+                }
+            }
+         */
 
 
-        //
-        Vector3 rp = ray.getPoint(5f);
-        model.setWorldPosition(rp);
+
         // Rotate model from view point to current location
         Quaternion q = arCam.getArSceneView().getScene().getCamera().getLocalRotation();
         com.example.outdoordirections.model.Quaternion qc = new com.example.outdoordirections.model.Quaternion(q);
@@ -266,7 +252,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             vertexCurrent.setY(utmCurrent.getY());
 
 
-            // TODO: 1.8 m
+            // TODO: 1.8 m or 1 m?
             // View point
             //  O    |         \
             // /|\  1.5m       1.8m
@@ -459,16 +445,19 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
         // Remove old object
         if(oldNode!=null){
-            Node nodeToRemove = arCam.getArSceneView().getScene().getChildren().get(1);
-            arCam.getArSceneView().getScene().removeChild(nodeToRemove);
-
+            if (arCam.getArSceneView().getScene().getChildren().size()>1){
+                Node nodeToRemove = arCam.getArSceneView().getScene().getChildren().get(1);
+                arCam.getArSceneView().getScene().removeChild(nodeToRemove);
+            }
         }
         node.setParent(arCam.getArSceneView().getScene());
         Camera camera = arCam.getArSceneView().getScene().getCamera();
+        // TODO: use pitch to determine the x and y here
         Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
 
         model = new TransformableNode(arCam.getTransformationSystem());
         //TODO: scale?
+        // TODO: use pitch to determine scale
         if (scale<0.5){
             scale = 0.5;
         }else if (scale > 1.0){
@@ -476,6 +465,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         }
         model.getScaleController().setMaxScale((float)scale*6/1000);
         model.getScaleController().setMinScale((float)scale*4/1000);
+        // TODO: use pitch to determine distance
         model.setLocalPosition(ray.getPoint(5f));
         model.setParent(node);
         model.setRenderable(modelRenderable);
