@@ -139,6 +139,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
 
+        test = findViewById(R.id.test);
 
 
         // Get route
@@ -174,6 +175,14 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
 
             // ArFragment is linked up with its respective id used in the activity_main.xml
             arCam = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.arCameraArea);
+            if (oldNode==null){
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadRouteModel(0.005);
+                    }
+                },5000);
+            }
 
             arCam.getArSceneView().getScene().addOnUpdateListener(this::updateNode);
         } else {
@@ -227,6 +236,10 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     }
 
     private void updateNode(FrameTime frameTime) {
+
+        if (oldNode==null) {
+            return;
+        }
 
         /*
             Collection<Plane> planes = arCam.getArSceneView().getArFrame().getUpdatedTrackables(Plane.class);
@@ -298,6 +311,9 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             // Direction from view to next point on route
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
             final Vertex diffFromNextToPrev = prevPnt.sub(nextPnt);
+
+            test.setText("pitch = "+ pitch +"\n" +
+                    "roll = "+ roll +"\n");
 
             // Distance from view to next point
             loadRouteModel(diffFromViewToNext.length()/diffFromNextToPrev.length());

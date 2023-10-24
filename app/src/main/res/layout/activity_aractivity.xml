@@ -24,4 +24,14 @@
         android:clickable="true"
         android:focusable="true" />
 
+    <TextView
+        android:id="@+id/test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="360dp"
+        android:layout_marginBottom="488dp"
+        android:text="TEST" />
+
 </RelativeLayout>
