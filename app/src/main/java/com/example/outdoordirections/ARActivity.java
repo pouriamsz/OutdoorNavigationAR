@@ -317,8 +317,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             final Vertex diffFromViewToNext = nextPnt.sub(viewPoint);
             final Vertex diffFromNextToPrev = prevPnt.sub(nextPnt);
 
-            test.setText("pitch = "+ pitch +"\n" +
-                    "roll = "+ roll +"\n");
+//            test.setText("pitch = "+ pitch +"\n" +
+//                    "roll = "+ roll +"\n");
 
             // Distance from view to next point
             // scale = diffFromViewToNext.length()/diffFromNextToPrev.length()
