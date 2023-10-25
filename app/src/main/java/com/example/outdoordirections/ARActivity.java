@@ -103,6 +103,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     private float[] values = new float[3];
     private float yaw;
     private ArrayList<Float> yaws = new ArrayList<>();
+    private ArrayList<Float> pitches = new ArrayList<>();
     private float pitch;
     private float roll;
     private SensorManager sensorManager;
@@ -179,7 +180,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        loadRouteModel(0.005);
+                        loadRouteModel();
                     }
                 },5000);
             }
@@ -222,12 +223,12 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                 });
     }
 
-    private void loadRouteModel(double scale) {
+    private void loadRouteModel() {
         ModelRenderable.builder()
                                 .setSource(ARActivity.this, Uri.parse("red_arrow_chevrons_wayfinding.glb"))
                                 .setIsFilamentGltf(true)
                                 .build()
-                                .thenAccept(modelRenderable -> addRouteNode(modelRenderable, scale))
+                                .thenAccept(modelRenderable -> addRouteNode(modelRenderable))
                                 .exceptionally(throwable -> {
                                     AlertDialog.Builder builder = new AlertDialog.Builder(ARActivity.this);
                                     builder.setMessage("Something is not right" + throwable.getMessage()).show();
@@ -270,7 +271,11 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             //  O    |         \
             // /|\  1.5m       1.8m
             // / \   | __ 1m __  \
-            double d = 1.8;
+            // TODO: use pitch
+            double d = 2;
+            if (pitch != 90) {
+                d = 1.5 * Math.tan(Math.toRadians(Math.abs(pitch)));
+            }
             viewPoint = vertexCurrent.add(new Vertex(d*Math.sin(Math.toRadians(yaw)),
                     d*Math.cos(Math.toRadians(yaw)),
                     0));
@@ -316,7 +321,8 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
                     "roll = "+ roll +"\n");
 
             // Distance from view to next point
-            loadRouteModel(diffFromViewToNext.length()/diffFromNextToPrev.length());
+            // scale = diffFromViewToNext.length()/diffFromNextToPrev.length()
+            loadRouteModel();
 
             final Vertex directionFromViewToNext = diffFromViewToNext.normalize();
             double beta = Math.atan2(directionFromViewToNext.getY(), directionFromViewToNext.getX());
@@ -454,7 +460,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
     }
 
 
-    private void addRouteNode(ModelRenderable modelRenderable, double scale ) {
+    private void addRouteNode(ModelRenderable modelRenderable ) {
         arCam.getArSceneView().getPlaneRenderer().setVisible(false);
 
         Node node = new Node();
@@ -469,20 +475,19 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
         node.setParent(arCam.getArSceneView().getScene());
         Camera camera = arCam.getArSceneView().getScene().getCamera();
         // TODO: use pitch to determine the x and y here
-        Ray ray = camera.screenPointToRay(deviceWidth/2, 2*deviceHeight/3);
+        float sh = ((Math.abs(pitch)+90)/180) + 1; // max = 2, min = 1.5
+        Ray ray = camera.screenPointToRay(deviceWidth/2, sh*deviceHeight/3);
 
         model = new TransformableNode(arCam.getTransformationSystem());
         //TODO: scale?
         // TODO: use pitch to determine scale
-        if (scale<0.5){
-            scale = 0.5;
-        }else if (scale > 1.0){
-            scale = 1.0;
-        }
-        model.getScaleController().setMaxScale((float)scale*6/1000);
-        model.getScaleController().setMinScale((float)scale*4/1000);
+        double scale = -(Math.abs(pitch)+90)/180 + (1.5); // max = 0.5, min = 1
+        // TODO:
+        model.getScaleController().setMaxScale((float)scale*6/1000); // TODO: 6/1000
+        model.getScaleController().setMinScale((float)scale*4/1000); // TODO: 4/1000
         // TODO: use pitch to determine distance
-        model.setLocalPosition(ray.getPoint(5f));
+        double rayDis = 1.5 * 1/Math.cos(Math.toRadians(Math.abs(pitch)));
+        model.setLocalPosition(ray.getPoint((float)rayDis));
         model.setParent(node);
         model.setRenderable(modelRenderable);
         model.getTransformationSystem().selectNode(null);
@@ -650,7 +655,7 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             // this is the yaw or the azimuth we need
             modifyYaw(values[0]);
 
-            pitch = (float)Math.toDegrees(values[1]);
+            modifyPitch(values[1]);
             roll = (float)Math.toDegrees(values[2]);
 
             //retrigger the loop when things are repopulated
@@ -658,6 +663,64 @@ public class ARActivity extends AppCompatActivity implements SensorEventListener
             accels = null;
         }
 
+    }
+
+    private void modifyPitch(float value) {
+        if (pitches.size()==0){
+            pitch = (float)Math.toDegrees(value);
+            pitches.add(pitch);
+        }else{
+            pitch = 0;
+            for (int i = 0; i < pitches.size(); i++) {
+                if ( pitches.get(i)<-170 || pitches.get(i)>170) {
+                    if (pitches.get(0)>0){
+                        pitch += Math.abs(pitches.get(i));
+                    }else{
+                        pitch += -Math.abs(pitches.get(i));
+                    }
+                }else{
+                    pitch += pitches.get(i);
+                }
+            }
+            pitch = pitch/pitches.size();
+            if (Math.abs(pitch - (float)Math.toDegrees(value) )>20 &&
+                    Math.abs(pitch - (float)Math.toDegrees(value) )<35){
+                pitches.remove(0);
+                pitches.add(pitch);
+                pitch = 0;
+                for (int i = 0; i < pitches.size(); i++) {
+                    if ( pitches.get(i)<-170 || pitches.get(i)>170) {
+                        if (pitches.get(0)>0){
+                            pitch += Math.abs(pitches.get(i));
+                        }else{
+                            pitch += -Math.abs(pitches.get(i));
+                        }
+                    }else{
+                        pitch += pitches.get(i);
+                    }
+                }
+                pitch = pitch/pitches.size();
+            }else{
+                if (pitches.size()>5){
+                    pitches.remove(0);
+                }
+                pitches.add((float)Math.toDegrees(value));
+                pitch = 0;
+                for (int i = 0; i < pitches.size(); i++) {
+                    if ( pitches.get(i)<-170 || pitches.get(i)>170) {
+                        if (pitches.get(0)>0){
+                            pitch += Math.abs(pitches.get(i));
+                        }else{
+                            pitch += -Math.abs(pitches.get(i));
+                        }
+                    }else{
+                        pitch += pitches.get(i);
+                    }
+                }
+                pitch /= pitches.size();
+            }
+
+        }
     }
 
     private void modifyYaw(float value) {
